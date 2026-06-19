@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  FACILITATOR
+  SCHOOL_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  DISABLED
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  ENDED
+  PAUSED
+}
+
+enum SessionStatus {
+  NOT_STARTED
+  ONGOING
+  COMPLETED
+  MISSED
+  RESCHEDULED
+}
+
+enum InventoryCondition {
+  NEW
+  GOOD
+  FAIR
+  NEEDS_REPLACEMENT
+  LOST
+}
+
+enum ReportStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  RETURNED
+}
+
+model Profile {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  fullName  String
+  role      UserRole   @default(FACILITATOR)
+  status    UserStatus @default(PENDING)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  facilitatorAssignments FacilitatorAssignment[] @relation("FacilitatorAssignments")
+  facilitatedSessions    ACESession[]            @relation("FacilitatorSessions")
+  reports                Report[]                @relation("ReportFacilitator")
+  mediaUploads           MediaUpload[]           @relation("MediaUploader")
+}
+
+model School {
+  id            String       @id @default(uuid())
+  name          String
+  address       String
+  contactPerson String
+  contactEmail  String?
+  schoolYear    String
+  status        SchoolStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  assignments    FacilitatorAssignment[]
+  sessions       ACESession[]
+  inventoryItems InventoryItem[]
+  reports        Report[]
+  mediaUploads   MediaUpload[]
+}
+
+model FacilitatorAssignment {
+  id            String           @id @default(uuid())
+  facilitatorId String
+  schoolId      String
+  startDate     DateTime
+  endDate       DateTime?
+  status        AssignmentStatus @default(ACTIVE)
+
+  facilitator Profile @relation("FacilitatorAssignments", fields: [facilitatorId], references: [id], onDelete: Restrict)
+  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([facilitatorId])
+  @@index([schoolId])
+}
+
+model ACESession {
+  id            String        @id @default(uuid())
+  schoolId      String
+  facilitatorId String
+  title         String
+  gradeLevel    String
+  section       String
+  sessionNumber Int
+  scheduledDate DateTime
+  actualDate    DateTime?
+  status        SessionStatus @default(NOT_STARTED)
+  remarks       String?
+
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  facilitator Profile          @relation("FacilitatorSessions", fields: [facilitatorId], references: [id], onDelete: Restrict)
+  progress    SessionProgress?
+  reports     Report[]
+  media       MediaUpload[]
+
+  @@index([schoolId])
+  @@index([facilitatorId])
+  @@index([scheduledDate])
+}
+
+model SessionProgress {
+  id                   String  @id @default(uuid())
+  sessionId            String  @unique
+  skillCovered         String
+  activityCompleted    Boolean @default(false)
+  studentAttendance    Int
+  completionPercentage Int
+  issuesEncountered    String?
+  nextSteps            String?
+
+  session ACESession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model InventoryItem {
+  id        String             @id @default(uuid())
+  schoolId  String
+  itemName  String
+  category  String
+  quantity  Int
+  condition InventoryCondition @default(GOOD)
+  remarks   String?
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model Report {
+  id            String       @id @default(uuid())
+  schoolId      String
+  facilitatorId String
+  sessionId     String?
+  reportType    String
+  title         String
+  summary       String
+  submittedAt   DateTime?
+  status        ReportStatus @default(DRAFT)
+
+  school      School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  facilitator Profile     @relation("ReportFacilitator", fields: [facilitatorId], references: [id], onDelete: Restrict)
+  session     ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId])
+  @@index([facilitatorId])
+  @@index([sessionId])
+}
+
+model MediaUpload {
+  id           String   @id @default(uuid())
+  schoolId     String
+  sessionId    String?
+  uploadedById String
+  fileName     String
+  fileUrl      String
+  fileType     String
+  description  String?
+  createdAt    DateTime @default(now())
+
+  school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session    ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  uploadedBy Profile     @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([schoolId])
+  @@index([sessionId])
+  @@index([uploadedById])
+}
