@@ -139,7 +139,8 @@ function buildPreviewFromSchool(
   const codingHours = Math.round((sessions.length * 45) / 60);
   const activities = uniqueCount(sessions.map((session) => session.activity));
   const teachers = uniqueCount(sessions.map((session) => session.teacher));
-  const facilitators = uniqueCount(sessions.map((session) => session.facilitator.fullName));
+  const assignmentHistoryFacilitators = Array.from(new Set(school.assignments.map((assignment) => assignment.facilitator.fullName).filter(Boolean)));
+  const facilitators = assignmentHistoryFacilitators.length || uniqueCount(sessions.map((session) => session.facilitator.fullName));
   const subjects = uniqueCount(sessions.map((session) => session.subject));
   const modalities = uniqueCount(sessions.map((session) => session.delivery));
   const projectTypes = uniqueCount(school.projects.map((project) => project.projectType));
@@ -180,6 +181,7 @@ function buildPreviewFromSchool(
       teachers,
       studentCoders,
       facilitators,
+      facilitatorsInvolved: assignmentHistoryFacilitators.join(", ") || "No assignment history",
       subjects,
       modalities,
       projectTypes,
@@ -272,7 +274,7 @@ export async function generateSchoolReportPptx(preview: Awaited<ReturnType<typeo
   addKpi(setup, "Active Facilitators", preview.metrics.facilitators, 6.85, 1.15);
   addKpi(setup, "Inventory Records", preview.metrics.totalInventory, 9.95, 1.15, ACE.orange);
   setup.addText(
-    `Most active grade: ${preview.metrics.mostActiveGrade}\nMost active teacher: ${preview.metrics.mostActiveTeacher}\nMost active facilitator: ${preview.metrics.mostActiveFacilitator}`,
+    `Most active grade: ${preview.metrics.mostActiveGrade}\nMost active teacher: ${preview.metrics.mostActiveTeacher}\nMost active facilitator: ${preview.metrics.mostActiveFacilitator}\nFacilitators involved: ${preview.metrics.facilitatorsInvolved}`,
     { x: 0.75, y: 3.0, w: 10.5, h: 1.1, fontFace: "Arial", fontSize: 13, color: ACE.text, breakLine: false },
   );
 
@@ -317,6 +319,7 @@ export function generateSchoolReportPdf(preview: Awaited<ReturnType<typeof build
     `Participating Teachers: ${preview.metrics.teachers}`,
     `Student Coders: ${preview.metrics.studentCoders}`,
     `Active Facilitators: ${preview.metrics.facilitators}`,
+    `Facilitators Involved: ${preview.metrics.facilitatorsInvolved}`,
     `Most Active Grade: ${preview.metrics.mostActiveGrade}`,
     `Most Active Teacher: ${preview.metrics.mostActiveTeacher}`,
   ];

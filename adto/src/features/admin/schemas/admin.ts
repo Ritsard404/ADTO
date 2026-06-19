@@ -97,7 +97,7 @@ export const assignmentUpsertSchema = z.object({
   facilitatorId: z.string().uuid(),
   startDate: z.string().trim().min(1),
   endDate: optionalText(32),
-  status: z.enum(["ACTIVE", "PAUSED", "ENDED"]),
+  status: z.enum(["ACTIVE", "COMPLETED", "TRANSFERRED"]),
 });
 
 export const assignmentEndSchema = z.object({

@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, FileText, GraduationCap, Home, School } from "lucide-react";
+import { Boxes, CalendarDays, FileText, Home, School } from "lucide-react";
 import type { UserRole } from "@/generated/prisma/enums";
 import { cn } from "@/lib/utils";
 
 const mobileItems = [
   { title: "Dashboard", href: "/dashboard", icon: Home, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
   { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Sessions", href: "/sessions", icon: GraduationCap, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+  { title: "Calendar", href: "/calendar", icon: CalendarDays, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
   { title: "Inventory", href: "/inventory", icon: Boxes, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
   { title: "Reports", href: "/reports", icon: FileText, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
 ] satisfies Array<{ title: string; href: string; icon: typeof Home; roles: UserRole[] }>;

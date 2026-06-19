@@ -60,6 +60,8 @@ adto/
         login/
           page.tsx
       (protected)/
+        calendar/
+          page.tsx
         dashboard/
           page.tsx
           _actions/

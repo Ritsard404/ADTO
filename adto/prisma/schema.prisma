@@ -33,8 +33,8 @@ enum SchoolStatus {
 
 enum AssignmentStatus {
   ACTIVE
-  ENDED
-  PAUSED
+  COMPLETED
+  TRANSFERRED
 }
 
 enum SessionStatus {
@@ -238,6 +238,7 @@ model FacilitatorAssignment {
   startDate     DateTime
   endDate       DateTime?
   status        AssignmentStatus @default(ACTIVE)
+  assignedBy    String?
 
   facilitator Profile @relation("FacilitatorAssignments", fields: [facilitatorId], references: [id], onDelete: Restrict)
   school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)

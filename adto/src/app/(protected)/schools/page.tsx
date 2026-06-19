@@ -75,7 +75,13 @@ export default async function SchoolsPage({
         </CardHeader>
         <CardContent className="space-y-4">
           {schools.map((school) => {
-            const activeAf = school.assignments.map((assignment) => assignment.facilitator.fullName).join(", ") || "Unassigned";
+            const activeAf = school.assignments
+              .filter((assignment) => assignment.status === "ACTIVE")
+              .map((assignment) => assignment.facilitator.fullName)
+              .join(", ") || "Unassigned";
+            const assignmentTimeline = school.assignments
+              .map((assignment) => `${assignment.startDate.getFullYear()} ${assignment.facilitator.fullName} (${assignment.status})`)
+              .join(" -> ");
             const inventoryReview = school.inventoryItems.filter(
               (item) => !item.remarks || item.condition === "FAIR" || item.condition === "NEEDS_REPLACEMENT",
             ).length;
@@ -172,6 +178,10 @@ export default async function SchoolsPage({
                 <div className="xl:col-span-3">
                   <p className="text-sm font-medium">Assigned AF</p>
                   <p className="mt-2 text-sm text-muted-foreground">{activeAf}</p>
+                </div>
+                <div className="xl:col-span-3">
+                  <p className="text-sm font-medium">Assignment timeline</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{assignmentTimeline || "No assignment history"}</p>
                 </div>
                 <div className="grid grid-cols-4 gap-2 text-sm xl:col-span-4">
                   <span>Sessions: {school.sessions.length}</span>

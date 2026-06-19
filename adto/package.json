@@ -16,6 +16,11 @@
     "adms:inspect": "tsx scripts/import-adms-workbook.ts \"legacy/Colegio de la Immaculada Concepcion - Gorordo - ACE Sessions 2025 -2026.xlsx\" \"facilitator@adto.local\" inspect"
   },
   "dependencies": {
+    "@fullcalendar/daygrid": "^6.1.21",
+    "@fullcalendar/interaction": "^6.1.21",
+    "@fullcalendar/list": "^6.1.21",
+    "@fullcalendar/react": "^6.1.21",
+    "@fullcalendar/timegrid": "^6.1.21",
     "@hookform/resolvers": "^5.4.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",

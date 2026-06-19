@@ -182,19 +182,8 @@ export async function upsertAdminSessionAction(formData: FormData) {
 
 export async function upsertAssignmentAction(formData: FormData) {
   assertWritableDataMode();
-  await requireRole(["ADMIN"]);
+  const profile = await requireRole(["ADMIN"]);
   const input = assignmentUpsertSchema.parse(formDataToObject(formData));
-
-  if (input.status === "ACTIVE") {
-    await prisma.facilitatorAssignment.updateMany({
-      where: {
-        schoolId: input.schoolId,
-        status: "ACTIVE",
-        id: input.assignmentId ? { not: input.assignmentId } : undefined,
-      },
-      data: { status: "ENDED", endDate: new Date() },
-    });
-  }
 
   const data = {
     schoolId: input.schoolId,
@@ -202,17 +191,32 @@ export async function upsertAssignmentAction(formData: FormData) {
     startDate: new Date(input.startDate),
     endDate: input.endDate ? new Date(input.endDate) : null,
     status: input.status,
+    assignedBy: profile.id,
   };
 
-  if (input.assignmentId) {
-    await prisma.facilitatorAssignment.update({ where: { id: input.assignmentId }, data });
-  } else {
-    await prisma.facilitatorAssignment.create({ data });
-  }
+  await prisma.$transaction(async (tx) => {
+    if (input.status === "ACTIVE") {
+      await tx.facilitatorAssignment.updateMany({
+        where: {
+          facilitatorId: input.facilitatorId,
+          status: "ACTIVE",
+          id: input.assignmentId ? { not: input.assignmentId } : undefined,
+        },
+        data: { status: "TRANSFERRED", endDate: new Date() },
+      });
+    }
+
+    if (input.assignmentId) {
+      await tx.facilitatorAssignment.update({ where: { id: input.assignmentId }, data });
+    } else {
+      await tx.facilitatorAssignment.create({ data });
+    }
+  });
 
   revalidatePath("/facilitators");
   revalidatePath("/schools");
   revalidatePath("/dashboard");
+  revalidatePath("/facilitator/dashboard");
 }
 
 export async function endAssignmentAction(formData: FormData) {
@@ -222,12 +226,13 @@ export async function endAssignmentAction(formData: FormData) {
 
   await prisma.facilitatorAssignment.update({
     where: { id: input.assignmentId },
-    data: { status: "ENDED", endDate: new Date() },
+    data: { status: "COMPLETED", endDate: new Date() },
   });
 
   revalidatePath("/facilitators");
   revalidatePath("/schools");
   revalidatePath("/dashboard");
+  revalidatePath("/facilitator/dashboard");
 }
 
 export async function createUserAction(formData: FormData) {

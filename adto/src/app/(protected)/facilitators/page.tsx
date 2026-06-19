@@ -70,7 +70,7 @@ export default async function FacilitatorsPage() {
             <Label>
               Status
               <select name="status" defaultValue="ACTIVE" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {["ACTIVE", "PAUSED", "ENDED"].map((status) => (
+                {["ACTIVE", "COMPLETED", "TRANSFERRED"].map((status) => (
                   <option key={status} value={status}>
                     {status}
                   </option>
@@ -116,7 +116,7 @@ export default async function FacilitatorsPage() {
                       <form action={endAssignmentAction}>
                         <input type="hidden" name="assignmentId" value={assignment.id} />
                         <Button type="submit" variant="outline" size="sm">
-                          Remove
+                          Complete
                         </Button>
                       </form>
                     ) : (
@@ -150,15 +150,12 @@ export default async function FacilitatorsPage() {
                   <TableCell className="font-medium">{facilitator.fullName}</TableCell>
                   <TableCell>{facilitator.email}</TableCell>
                   <TableCell>
-                    {facilitator.facilitatorAssignments
-                      .filter((assignment) => assignment.status === "ACTIVE")
-                      .map((assignment) => assignment.school.name)
-                      .join(", ") || "None"}
+                    {facilitator.facilitatorAssignments.find((assignment) => assignment.status === "ACTIVE")?.school.name ?? "None"}
                   </TableCell>
                   <TableCell>
                     {facilitator.facilitatorAssignments.map((assignment) => (
                       <div key={assignment.id} className="text-xs text-muted-foreground">
-                        {assignment.school.name}: {dateInputValue(assignment.startDate)} - {assignment.endDate ? dateInputValue(assignment.endDate) : "Current"}
+                        {assignment.school.name}: {dateInputValue(assignment.startDate)} - {assignment.endDate ? dateInputValue(assignment.endDate) : "Current"} ({assignment.status})
                       </div>
                     ))}
                   </TableCell>

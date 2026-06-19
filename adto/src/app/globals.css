@@ -168,4 +168,35 @@
   .adto-focus {
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
+
+  .calendar-shell .fc {
+    @apply text-sm;
+  }
+
+  .calendar-shell .fc-toolbar {
+    @apply flex-wrap gap-2;
+  }
+
+  .calendar-shell .fc-toolbar-title {
+    @apply text-base font-semibold;
+  }
+
+  .calendar-shell .fc-button {
+    @apply rounded-md border-0 bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-none;
+  }
+
+  .calendar-shell .fc-button-primary:not(:disabled).fc-button-active,
+  .calendar-shell .fc-button-primary:not(:disabled):active {
+    @apply bg-ace-orange text-white;
+  }
+
+  .calendar-shell .fc-daygrid-day-number,
+  .calendar-shell .fc-col-header-cell-cushion {
+    @apply text-xs font-semibold text-foreground no-underline;
+  }
+
+  .calendar-shell .fc-list-event-title,
+  .calendar-shell .fc-list-event-time {
+    @apply text-sm;
+  }
 }

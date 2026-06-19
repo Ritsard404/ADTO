@@ -16,7 +16,7 @@ export async function buildAdminCsvReport(type: string) {
     const mock = withMockRelations();
     if (type === "schools") {
       return toCsv(
-        ["School", "Address", "Contact", "Email", "School Year", "Status", "Active AF"],
+        ["School", "Address", "Contact", "Email", "School Year", "Status", "Facilitators Involved"],
         mock.schools.map((school) => [
           school.name,
           school.address,
@@ -24,7 +24,7 @@ export async function buildAdminCsvReport(type: string) {
           school.contactEmail,
           school.schoolYear,
           school.status,
-          school.assignments.map((assignment) => assignment.facilitator.fullName).join("; "),
+          school.assignments.map((assignment) => `${assignment.facilitator.fullName} (${assignment.status})`).join("; "),
         ]),
       );
     }
@@ -90,11 +90,11 @@ export async function buildAdminCsvReport(type: string) {
 
   if (type === "schools") {
     const schools = await prisma.school.findMany({
-      include: { assignments: { where: { status: "ACTIVE" }, include: { facilitator: true } } },
+      include: { assignments: { include: { facilitator: true }, orderBy: { startDate: "asc" } } },
       orderBy: { name: "asc" },
     });
     return toCsv(
-      ["School", "Address", "Contact", "Email", "School Year", "Status", "Active AF"],
+      ["School", "Address", "Contact", "Email", "School Year", "Status", "Facilitators Involved"],
       schools.map((school) => [
         school.name,
         school.address,
@@ -102,7 +102,7 @@ export async function buildAdminCsvReport(type: string) {
         school.contactEmail,
         school.schoolYear,
         school.status,
-        school.assignments.map((assignment) => assignment.facilitator.fullName).join("; "),
+        school.assignments.map((assignment) => `${assignment.facilitator.fullName} (${assignment.status})`).join("; "),
       ]),
     );
   }

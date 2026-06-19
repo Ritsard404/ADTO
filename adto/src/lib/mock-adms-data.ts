@@ -106,6 +106,16 @@ export const mockAssignments = [
     startDate: new Date("2025-06-16"),
     endDate: null as Date | null,
     status: "ACTIVE" as AssignmentStatus,
+    assignedBy: "mock-admin",
+  },
+  {
+    id: "mock-assignment-mandaue-history",
+    facilitatorId: "mock-facilitator",
+    schoolId: "mock-cic-mandaue",
+    startDate: new Date("2024-06-16"),
+    endDate: new Date("2025-03-31"),
+    status: "TRANSFERRED" as AssignmentStatus,
+    assignedBy: "mock-admin",
   },
 ];
 

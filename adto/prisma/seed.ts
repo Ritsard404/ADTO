@@ -70,6 +70,7 @@ async function main() {
       schoolId: school.id,
       startDate: new Date("2025-06-01"),
       status: "ACTIVE",
+      assignedBy: admin.id,
     },
   });
 

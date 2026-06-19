@@ -26,7 +26,7 @@ export async function getSchoolsPortalReadModel(schoolIds: string[] | null, quer
         : undefined,
     },
     include: {
-      assignments: { where: { status: "ACTIVE" }, include: { facilitator: true } },
+      assignments: { include: { facilitator: true }, orderBy: { startDate: "asc" } },
       projects: { select: { id: true } },
       inventoryItems: { select: { id: true, condition: true, remarks: true } },
       reports: { select: { id: true } },
