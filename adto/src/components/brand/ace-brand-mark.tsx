@@ -1,18 +1,16 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 export function AceBrandMark({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "grid size-10 rotate-[-3deg] grid-cols-2 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_6px_18px_rgba(30,136,229,0.16)]",
+        "relative size-10 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_6px_18px_rgba(30,136,229,0.16)]",
         className,
       )}
       aria-hidden="true"
     >
-      <span className="bg-ace-red" />
-      <span className="bg-ace-orange" />
-      <span className="bg-ace-blue" />
-      <span className="bg-ace-green" />
+      <Image src="/favicon.ico" alt="" fill sizes="40px" className="object-contain p-1" unoptimized priority />
     </div>
   );
 }

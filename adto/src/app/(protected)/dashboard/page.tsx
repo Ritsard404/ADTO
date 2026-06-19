@@ -1,4 +1,4 @@
-import { Activity, CalendarDays, FileText, GraduationCap, School, Users } from "lucide-react";
+import { Activity, Boxes, CalendarDays, FileText, GraduationCap, School, Users } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/metric-card";
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
@@ -7,13 +7,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
-  const [schools, facilitators, sessions, activeSessions, completedSessions, pendingReports, schoolProgress] = await Promise.all([
+  const [schools, facilitators, sessions, activeSessions, completedSessions, pendingReports, projects, pendingInventoryRemarks, schoolProgress] = await Promise.all([
     prisma.school.count(),
     prisma.profile.count({ where: { role: "FACILITATOR" } }),
     prisma.aCESession.count(),
     prisma.aCESession.count({ where: { status: { in: ["NOT_STARTED", "ONGOING", "RESCHEDULED"] } } }),
     prisma.aCESession.count({ where: { status: "COMPLETED" } }),
     prisma.report.count({ where: { status: { in: ["DRAFT", "SUBMITTED"] } } }),
+    prisma.aCEProject.count(),
+    prisma.inventoryItem.count({ where: { OR: [{ remarks: null }, { condition: { in: ["FAIR", "NEEDS_REPLACEMENT"] } }] } }),
     prisma.school.findMany({
       take: 5,
       include: {
@@ -37,6 +39,12 @@ export default async function DashboardPage() {
         <MetricCard title="Total Facilitators" value={facilitators} description="ACE facilitators on record" icon={Users} accent="orange" />
         <MetricCard title="Active Sessions" value={activeSessions} description="Scheduled, ongoing, or rescheduled" icon={GraduationCap} accent="green" />
         <MetricCard title="Completion Rate" value={`${completionRate}%`} description={`${completedSessions} of ${sessions} sessions completed`} icon={Activity} accent="red" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard title="Projects" value={projects} description="Student-created ACE projects tracked" icon={FileText} accent="blue" />
+        <MetricCard title="Pending Remarks" value={pendingInventoryRemarks} description="Inventory items needing verification notes" icon={Boxes} accent="orange" />
+        <MetricCard title="Session Updates" value={activeSessions} description="Facilitator session records still open" icon={CalendarDays} accent="green" />
+        <MetricCard title="Reports Pending" value={pendingReports} description="Draft or submitted reports" icon={FileText} accent="red" />
       </div>
       <div className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
       <Card className="adto-card">

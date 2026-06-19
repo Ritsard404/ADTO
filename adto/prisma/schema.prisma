@@ -37,6 +37,8 @@ enum SessionStatus {
   COMPLETED
   MISSED
   RESCHEDULED
+  CANCELLED
+  FOR_VERIFICATION
 }
 
 enum InventoryCondition {
@@ -52,6 +54,15 @@ enum ReportStatus {
   SUBMITTED
   REVIEWED
   RETURNED
+}
+
+enum ProjectStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  CHECKED
+  NEEDS_REVISION
+  COMPLETED
 }
 
 model Profile {
@@ -82,6 +93,7 @@ model School {
 
   assignments    FacilitatorAssignment[]
   sessions       ACESession[]
+  projects       ACEProject[]
   inventoryItems InventoryItem[]
   reports        Report[]
   mediaUploads   MediaUpload[]
@@ -114,16 +126,54 @@ model ACESession {
   actualDate    DateTime?
   status        SessionStatus @default(NOT_STARTED)
   remarks       String?
+  sourceKey     String?       @unique
+  sourceSheet   String?
+  period        String?
+  subject       String?
+  teacher       String?
+  activity      String?
+  delivery      String?
+  completion    String?
+  updatedAt     DateTime      @updatedAt
 
   school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   facilitator Profile          @relation("FacilitatorSessions", fields: [facilitatorId], references: [id], onDelete: Restrict)
   progress    SessionProgress?
+  projects    ACEProject[]
   reports     Report[]
   media       MediaUpload[]
 
   @@index([schoolId])
   @@index([facilitatorId])
   @@index([scheduledDate])
+}
+
+model ACEProject {
+  id            String        @id @default(uuid())
+  schoolId      String
+  sessionId     String?
+  title         String
+  term          String?
+  gradeLevel    String?
+  section       String?
+  students      String?
+  teacher       String?
+  projectType   String?
+  description   String?
+  projectUrl    String?
+  remarks       String?
+  submittedAt   DateTime?
+  status        ProjectStatus @default(SUBMITTED)
+  sourceKey     String?       @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  school  School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId])
+  @@index([sessionId])
+  @@unique([schoolId, title, gradeLevel, section])
 }
 
 model SessionProgress {
@@ -140,17 +190,50 @@ model SessionProgress {
 }
 
 model InventoryItem {
-  id        String             @id @default(uuid())
-  schoolId  String
-  itemName  String
-  category  String
-  quantity  Int
-  condition InventoryCondition @default(GOOD)
-  remarks   String?
+  id            String             @id @default(uuid())
+  schoolId      String
+  itemName      String
+  category      String
+  quantity      Int
+  unit          String?
+  condition     InventoryCondition @default(GOOD)
+  remarks       String?
+  sourceKey     String?            @unique
+  lastCheckedAt DateTime?
+  lastCheckedBy String?
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school          School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  checks          InventoryCheck[]
+  remarkHistories InventoryRemarkHistory[]
 
   @@index([schoolId])
+}
+
+model InventoryCheck {
+  id        String             @id @default(uuid())
+  itemId    String
+  checkedBy String
+  condition InventoryCondition
+  quantity  Int
+  remarks   String?
+  checkedAt DateTime           @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
+}
+
+model InventoryRemarkHistory {
+  id         String   @id @default(uuid())
+  itemId     String
+  updatedBy  String
+  oldRemarks String?
+  newRemarks String?
+  createdAt  DateTime @default(now())
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
 }
 
 model Report {
