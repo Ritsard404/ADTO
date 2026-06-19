@@ -6,6 +6,7 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import listPlugin from "@fullcalendar/list";
 import interactionPlugin from "@fullcalendar/interaction";
+import multiMonthPlugin from "@fullcalendar/multimonth";
 import type { EventClickArg, EventContentArg, EventHoveringArg, EventInput } from "@fullcalendar/core";
 import { CalendarDays, FileText, ImageIcon, Pencil, RotateCcw } from "lucide-react";
 import type { CalendarReadModel, CalendarSessionEvent } from "@/features/calendar/dto/calendar-session.dto";
@@ -162,10 +163,25 @@ export function SharedSchoolCalendar({ readModel, initialFilters }: CalendarProp
           ) : null}
           <div className="calendar-shell overflow-hidden rounded-lg border bg-card p-2">
             <FullCalendar
-              plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
+              plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, multiMonthPlugin]}
               initialView="dayGridMonth"
-              headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek" }}
-              views={{ listWeek: { buttonText: "List" }, dayGridMonth: { buttonText: "Month" }, timeGridWeek: { buttonText: "Week" }, timeGridDay: { buttonText: "Day" } }}
+              headerToolbar={{ left: "prev,next today", center: "title", right: "dayGridMonth,multiMonthQuarter,multiMonthYear,timeGridWeek,timeGridDay,listWeek" }}
+              views={{
+                listWeek: { buttonText: "List" },
+                dayGridMonth: { buttonText: "Month" },
+                multiMonthQuarter: {
+                  type: "multiMonth",
+                  duration: { months: 3 },
+                  buttonText: "Quarter",
+                  multiMonthMaxColumns: 3,
+                },
+                multiMonthYear: {
+                  buttonText: "Year",
+                  multiMonthMaxColumns: 3,
+                },
+                timeGridWeek: { buttonText: "Week" },
+                timeGridDay: { buttonText: "Day" },
+              }}
               events={events}
               dayMaxEvents={3}
               eventClick={handleEventClick}

@@ -145,10 +145,18 @@
 
   html {
     @apply font-sans;
+    font-size: 15px;
+  }
+
+  @media (min-width: 768px) {
+    html {
+      font-size: 14px;
+    }
   }
 
   body {
     @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
   }
 }
 
@@ -198,5 +206,13 @@
   .calendar-shell .fc-list-event-title,
   .calendar-shell .fc-list-event-time {
     @apply text-sm;
+  }
+
+  .calendar-shell .fc-multimonth-title {
+    @apply text-sm font-semibold text-foreground;
+  }
+
+  .calendar-shell .fc-multimonth {
+    @apply border-0;
   }
 }
