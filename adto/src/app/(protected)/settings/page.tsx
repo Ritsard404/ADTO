@@ -1,8 +1,11 @@
+import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SettingsPage() {
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="Settings" description="Configure organization preferences, role approvals, and system defaults." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>Settings</CardTitle>
       </CardHeader>
@@ -10,5 +13,6 @@ export default function SettingsPage() {
         Organization settings, role approvals, and Supabase Storage buckets will be configured in later phases.
       </CardContent>
     </Card>
+    </div>
   );
 }

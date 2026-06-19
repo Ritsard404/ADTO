@@ -10,11 +10,13 @@ export default async function ProtectedLayout({
   const profile = await requireActiveProfile();
 
   return (
-    <div className="flex min-h-screen bg-muted/30">
+    <div className="flex min-h-screen bg-background">
       <AppSidebar profile={profile} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader profile={profile} />
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 px-4 py-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+        </main>
       </div>
     </div>
   );

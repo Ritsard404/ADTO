@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,9 @@ export default async function FacilitatorsPage() {
   });
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="Facilitators" description="View ACE facilitators and their assigned school coverage." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>Facilitators</CardTitle>
       </CardHeader>
@@ -35,5 +38,6 @@ export default async function FacilitatorsPage() {
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 }

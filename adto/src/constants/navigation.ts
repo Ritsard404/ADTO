@@ -1,8 +1,10 @@
 import {
   BarChart3,
   Boxes,
+  ClipboardList,
   FileText,
   GraduationCap,
+  HelpCircle,
   Home,
   Images,
   School,
@@ -18,14 +20,49 @@ export type NavItem = {
   roles: UserRole[];
 };
 
-export const navigationItems: NavItem[] = [
-  { title: "Dashboard", href: "/dashboard", icon: Home, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN"] },
-  { title: "Facilitators", href: "/facilitators", icon: Users, roles: ["ADMIN"] },
-  { title: "ACE Sessions", href: "/sessions", icon: GraduationCap, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Reports", href: "/reports", icon: FileText, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Inventory", href: "/inventory", icon: Boxes, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Media", href: "/media", icon: Images, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
-  { title: "Analytics", href: "/dashboard", icon: BarChart3, roles: ["ADMIN"] },
-  { title: "Settings", href: "/settings", icon: Settings, roles: ["ADMIN"] },
+export type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+export const navigationGroups: NavGroup[] = [
+  {
+    title: "Dashboard",
+    items: [{ title: "Overview", href: "/dashboard", icon: Home, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] }],
+  },
+  {
+    title: "Management",
+    items: [
+      { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN"] },
+      { title: "Facilitators", href: "/facilitators", icon: Users, roles: ["ADMIN"] },
+      { title: "Assignments", href: "/facilitators", icon: ClipboardList, roles: ["ADMIN"] },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { title: "ACE Sessions", href: "/sessions", icon: GraduationCap, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+      { title: "Reports", href: "/reports", icon: FileText, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+    ],
+  },
+  {
+    title: "Resources",
+    items: [
+      { title: "Inventory", href: "/inventory", icon: Boxes, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+      { title: "Media Uploads", href: "/media", icon: Images, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [{ title: "Analytics", href: "/dashboard", icon: BarChart3, roles: ["ADMIN"] }],
+  },
+  {
+    title: "System",
+    items: [
+      { title: "Settings", href: "/settings", icon: Settings, roles: ["ADMIN"] },
+      { title: "Help Center", href: "/settings", icon: HelpCircle, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+    ],
+  },
 ];
+
+export const navigationItems = navigationGroups.flatMap((group) => group.items);

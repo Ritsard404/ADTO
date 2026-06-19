@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/common/page-header";
+import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,9 @@ export default async function SessionsPage() {
   });
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="ACE Sessions" description="Track scheduled ACE sessions by school, facilitator, grade level, and implementation status." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>ACE Sessions</CardTitle>
       </CardHeader>
@@ -31,7 +34,7 @@ export default async function SessionsPage() {
                 <TableCell>{session.school.name}</TableCell>
                 <TableCell>{session.facilitator.fullName}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{session.status}</Badge>
+                  <StatusBadge status={session.status} />
                 </TableCell>
               </TableRow>
             ))}
@@ -39,5 +42,6 @@ export default async function SessionsPage() {
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 }

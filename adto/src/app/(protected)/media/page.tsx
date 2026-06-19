@@ -1,3 +1,4 @@
+import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { prisma } from "@/lib/prisma";
@@ -9,7 +10,9 @@ export default async function MediaPage() {
   });
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="Media Uploads" description="Browse uploaded session photos, student outputs, documents, and evidence files." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>Media</CardTitle>
       </CardHeader>
@@ -41,5 +44,6 @@ export default async function MediaPage() {
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 }

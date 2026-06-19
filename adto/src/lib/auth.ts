@@ -3,8 +3,20 @@ import { redirect } from "next/navigation";
 import type { UserRole } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { getTestRole, getTestRoleEmail, isAuthBypassEnabled } from "@/lib/test-auth";
 
 export const getCurrentProfile = cache(async () => {
+  if (isAuthBypassEnabled()) {
+    const role = await getTestRole();
+    const profile = await prisma.profile.findUnique({
+      where: { email: getTestRoleEmail(role) },
+    });
+
+    if (profile?.status === "ACTIVE") {
+      return profile;
+    }
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

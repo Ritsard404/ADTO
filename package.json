@@ -1,0 +1,13 @@
+{
+  "name": "adto-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix adto run dev",
+    "build": "npm --prefix adto run build",
+    "start": "npm --prefix adto run start",
+    "lint": "npm --prefix adto run lint",
+    "prisma:generate": "npm --prefix adto run prisma:generate",
+    "prisma:migrate": "npm --prefix adto run prisma:migrate",
+    "prisma:seed": "npm --prefix adto run prisma:seed"
+  }
+}

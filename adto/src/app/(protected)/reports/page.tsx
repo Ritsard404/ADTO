@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/common/page-header";
+import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,9 @@ export default async function ReportsPage() {
   });
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="Reports" description="Review submitted ACE reports, year-end summaries, and implementation documentation." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>Reports</CardTitle>
       </CardHeader>
@@ -31,7 +34,7 @@ export default async function ReportsPage() {
                 <TableCell>{report.school.name}</TableCell>
                 <TableCell>{report.facilitator.fullName}</TableCell>
                 <TableCell>
-                  <Badge>{report.status}</Badge>
+                  <StatusBadge status={report.status} />
                 </TableCell>
               </TableRow>
             ))}
@@ -46,5 +49,6 @@ export default async function ReportsPage() {
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 }

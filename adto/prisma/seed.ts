@@ -8,48 +8,64 @@ const adapter = new PrismaPg({
 
 const prisma = new PrismaClient({ adapter });
 
+const seed = {
+  adminEmail: process.env.SEED_ADMIN_EMAIL ?? "admin@adto.local",
+  adminFullName: process.env.SEED_ADMIN_FULL_NAME ?? "ADTO System Admin",
+  facilitatorEmail: process.env.SEED_FACILITATOR_EMAIL ?? "facilitator@adto.local",
+  facilitatorFullName: process.env.SEED_FACILITATOR_FULL_NAME ?? "Sample ACE Facilitator",
+  schoolId: process.env.SEED_SCHOOL_ID ?? "sample-school-cic-gorordo",
+  schoolName: process.env.SEED_SCHOOL_NAME ?? "Colegio de la Immaculada Concepcion - Gorordo",
+  schoolAddress: process.env.SEED_SCHOOL_ADDRESS ?? "Gorordo Avenue, Cebu City",
+  schoolContactPerson: process.env.SEED_SCHOOL_CONTACT_PERSON ?? "Sample School Coordinator",
+  schoolContactEmail: process.env.SEED_SCHOOL_CONTACT_EMAIL ?? "school-admin@adto.local",
+  schoolYear: process.env.SEED_SCHOOL_YEAR ?? "2025-2026",
+  assignmentId: process.env.SEED_ASSIGNMENT_ID ?? "sample-assignment-cic-gorordo",
+  sessionId: process.env.SEED_SESSION_ID ?? "sample-session-001",
+  inventoryItemId: process.env.SEED_INVENTORY_ITEM_ID ?? "sample-kit-001",
+};
+
 async function main() {
   const admin = await prisma.profile.upsert({
-    where: { email: "admin@adto.local" },
+    where: { email: seed.adminEmail },
     update: {},
     create: {
-      email: "admin@adto.local",
-      fullName: "ADTO System Admin",
+      email: seed.adminEmail,
+      fullName: seed.adminFullName,
       role: "ADMIN",
       status: "ACTIVE",
     },
   });
 
   const facilitator = await prisma.profile.upsert({
-    where: { email: "facilitator@adto.local" },
+    where: { email: seed.facilitatorEmail },
     update: {},
     create: {
-      email: "facilitator@adto.local",
-      fullName: "Sample ACE Facilitator",
+      email: seed.facilitatorEmail,
+      fullName: seed.facilitatorFullName,
       role: "FACILITATOR",
       status: "ACTIVE",
     },
   });
 
   const school = await prisma.school.upsert({
-    where: { id: "sample-school-cic-gorordo" },
+    where: { id: seed.schoolId },
     update: {},
     create: {
-      id: "sample-school-cic-gorordo",
-      name: "Colegio de la Immaculada Concepcion - Gorordo",
-      address: "Gorordo Avenue, Cebu City",
-      contactPerson: "Sample School Coordinator",
-      contactEmail: "school-admin@adto.local",
-      schoolYear: "2025-2026",
+      id: seed.schoolId,
+      name: seed.schoolName,
+      address: seed.schoolAddress,
+      contactPerson: seed.schoolContactPerson,
+      contactEmail: seed.schoolContactEmail,
+      schoolYear: seed.schoolYear,
       status: "ACTIVE",
     },
   });
 
   await prisma.facilitatorAssignment.upsert({
-    where: { id: "sample-assignment-cic-gorordo" },
+    where: { id: seed.assignmentId },
     update: {},
     create: {
-      id: "sample-assignment-cic-gorordo",
+      id: seed.assignmentId,
       facilitatorId: facilitator.id,
       schoolId: school.id,
       startDate: new Date("2025-06-01"),
@@ -58,10 +74,10 @@ async function main() {
   });
 
   await prisma.aCESession.upsert({
-    where: { id: "sample-session-001" },
+    where: { id: seed.sessionId },
     update: {},
     create: {
-      id: "sample-session-001",
+      id: seed.sessionId,
       schoolId: school.id,
       facilitatorId: facilitator.id,
       title: "ACE Session 1",
@@ -75,10 +91,10 @@ async function main() {
   });
 
   await prisma.inventoryItem.upsert({
-    where: { id: "sample-kit-001" },
+    where: { id: seed.inventoryItemId },
     update: {},
     create: {
-      id: "sample-kit-001",
+      id: seed.inventoryItemId,
       schoolId: school.id,
       itemName: "ACE Learning Kit",
       category: "Kit",

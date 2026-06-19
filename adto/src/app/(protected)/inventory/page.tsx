@@ -1,4 +1,5 @@
-import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/common/page-header";
+import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,9 @@ export default async function InventoryPage() {
   });
 
   return (
-    <Card>
+    <div className="space-y-6">
+      <PageHeader title="Inventory" description="Monitor ACE kits, materials, condition, and school-specific resource concerns." />
+    <Card className="adto-card">
       <CardHeader>
         <CardTitle>Inventory</CardTitle>
       </CardHeader>
@@ -31,7 +34,7 @@ export default async function InventoryPage() {
                 <TableCell>{item.school.name}</TableCell>
                 <TableCell>{item.quantity}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{item.condition}</Badge>
+                  <StatusBadge status={item.condition} />
                 </TableCell>
               </TableRow>
             ))}
@@ -39,5 +42,6 @@ export default async function InventoryPage() {
         </Table>
       </CardContent>
     </Card>
+    </div>
   );
 }
