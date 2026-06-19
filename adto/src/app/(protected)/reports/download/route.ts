@@ -1,5 +1,5 @@
 import { requireRole } from "@/lib/auth";
-import { buildAdminCsvReport } from "@/lib/services/adms-report-export";
+import { buildAdminCsvReport } from "@/features/reports/services/adms-report-export";
 
 const allowedReports = new Set(["summary", "schools", "assignments", "projects", "inventory", "inventory-remarks"]);
 

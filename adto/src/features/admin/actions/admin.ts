@@ -17,7 +17,7 @@ import {
   teacherCreateSchema,
   userCreateSchema,
   userUpdateSchema,
-} from "@/lib/validations/admin";
+} from "@/features/admin/schemas/admin";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());

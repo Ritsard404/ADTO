@@ -7,10 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { verifyInventoryAction } from "@/lib/actions/adms-workflow";
+import { verifyInventoryAction } from "@/features/facilitator/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
-import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
-import { getInventoryReadModel } from "@/lib/services/mockable-adms-read.service";
+import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { getInventoryReadModel } from "@/features/inventory/services/inventory-read.service";
 
 export default async function InventoryPage() {
   const profile = await requireActiveProfile();

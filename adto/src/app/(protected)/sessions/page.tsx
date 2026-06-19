@@ -1,6 +1,5 @@
 import { CalendarDays, ClipboardList, Plus } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
-import { BulkSessionEncoder } from "@/components/sessions/bulk-session-encoder";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,14 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createActivityCategoryAction, upsertAdminSessionAction } from "@/lib/actions/admin";
-import { bulkCreateSessionsAction, createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/lib/actions/adms-workflow";
+import { createActivityCategoryAction, upsertAdminSessionAction } from "@/features/admin/actions/admin";
+import { createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/features/facilitator/actions/adms-workflow";
+import { previewBulkSchedulePasteAction, previewDuplicateScheduleAction, saveBulkScheduleRowsAction } from "@/features/sessions/actions/schedule-workflow";
+import { ScheduleWorkbench } from "@/features/sessions/components/schedule-workbench";
 import { requireActiveProfile } from "@/lib/auth";
 import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
-import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
-import { getSessionsReadModel } from "@/lib/services/mockable-adms-read.service";
+import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { getSessionsReadModel } from "@/features/sessions/services/sessions-read.service";
 
 function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
@@ -238,10 +239,16 @@ export default async function SessionsPage() {
       {(profile.role === "ADMIN" || profile.role === "FACILITATOR") && schools.length ? (
         <Card className="adto-card">
           <CardHeader>
-            <CardTitle>Spreadsheet Session Encoder</CardTitle>
+            <CardTitle>Schedule Duplication and Excel Paste</CardTitle>
           </CardHeader>
           <CardContent>
-            <BulkSessionEncoder schools={schools.map((school) => ({ id: school.id, name: school.name }))} action={bulkCreateSessionsAction} />
+            <ScheduleWorkbench
+              schools={schools.map((school) => ({ id: school.id, name: school.name }))}
+              facilitators={facilitators.map((facilitator) => ({ id: facilitator.id, fullName: facilitator.fullName }))}
+              previewDuplicateAction={previewDuplicateScheduleAction}
+              previewBulkAction={previewBulkSchedulePasteAction}
+              saveBulkAction={saveBulkScheduleRowsAction}
+            />
           </CardContent>
         </Card>
       ) : null}

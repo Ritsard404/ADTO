@@ -95,7 +95,3 @@ export const facilitatorSchoolRemarkSchema = z.object({
   details: z.string().trim().min(1).max(2000),
   actionItems: optionalText(1500),
 });
-
-export const bulkSessionRowsSchema = z.object({
-  rowsJson: z.string().min(2),
-});

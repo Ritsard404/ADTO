@@ -1,5 +1,5 @@
 import type { UserRole } from "@/generated/prisma/enums";
-import { switchTestRole } from "@/lib/actions/auth";
+import { switchTestRole } from "@/features/auth/actions/auth";
 import { isAuthBypassEnabled } from "@/lib/test-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

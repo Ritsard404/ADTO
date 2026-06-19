@@ -13,15 +13,15 @@ import {
   createTeacherAction,
   createTeacherAssignmentAction,
   updateSchoolAction,
-} from "@/lib/actions/admin";
+} from "@/features/admin/actions/admin";
 import {
   createFacilitatorSchoolRemarkAction,
   createFacilitatorTeacherAction,
   upsertFacilitatorSectionAction,
-} from "@/lib/actions/adms-workflow";
+} from "@/features/facilitator/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
-import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
-import { getSchoolsPortalReadModel } from "@/lib/services/mockable-adms-read.service";
+import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { getSchoolsPortalReadModel } from "@/features/schools/services/schools-read.service";
 
 export default async function SchoolsPage({
   searchParams,

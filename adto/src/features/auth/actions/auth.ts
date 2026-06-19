@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { loginSchema } from "@/lib/validations/auth";
+import { loginSchema } from "@/features/auth/schemas/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isAuthBypassEnabled, isTestRole, TEST_AUTH_COOKIE } from "@/lib/test-auth";
 

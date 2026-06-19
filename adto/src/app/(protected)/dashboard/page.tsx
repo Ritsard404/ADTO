@@ -5,8 +5,8 @@ import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireActiveProfile } from "@/lib/auth";
-import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
-import { getDashboardReadModel } from "@/lib/services/mockable-adms-read.service";
+import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { getDashboardReadModel } from "@/features/dashboard/services/dashboard-read.service";
 
 export default async function DashboardPage() {
   const profile = await requireActiveProfile();

@@ -5,7 +5,7 @@ import {
   generateSchoolReportPdf,
   generateSchoolReportPptx,
   type ReportType,
-} from "@/lib/services/school-report.service";
+} from "@/features/reports/services/school-report.service";
 import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
 

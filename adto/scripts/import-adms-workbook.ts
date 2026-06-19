@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { inspectAdmsWorkbook, importAdmsWorkbook } from "../src/lib/services/adms-excel-import";
+import { inspectAdmsWorkbook, importAdmsWorkbook } from "../src/features/import-export/services/adms-excel-import";
 
 const workbookPath =
   process.argv[2] ?? "legacy/Colegio de la Immaculada Concepcion - Gorordo - ACE Sessions 2025 -2026.xlsx";

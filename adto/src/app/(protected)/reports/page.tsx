@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createFacilitatorMonthlyReportAction } from "@/lib/actions/adms-workflow";
+import { createFacilitatorMonthlyReportAction } from "@/features/facilitator/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
 import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
-import { buildSchoolReportPreview, getAccessibleReportSchools, type ReportType } from "@/lib/services/school-report.service";
+import { buildSchoolReportPreview, getAccessibleReportSchools, type ReportType } from "@/features/reports/services/school-report.service";
 
 const officialReportTypes: Array<{ value: ReportType; label: string; tab: string }> = [
   { value: "dashboard", label: "School Dashboard Report", tab: "Dashboard Reports" },

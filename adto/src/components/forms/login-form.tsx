@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
-import { signInWithPassword } from "@/lib/actions/auth";
+import { signInWithPassword } from "@/features/auth/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
