@@ -10,26 +10,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { verifyInventoryAction } from "@/lib/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
 import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
-import { prisma } from "@/lib/prisma";
+import { getInventoryReadModel } from "@/lib/services/mockable-adms-read.service";
 
 export default async function InventoryPage() {
   const profile = await requireActiveProfile();
   const schoolIds = await getAccessibleSchoolIds(profile);
-  const where = schoolIds ? { schoolId: { in: schoolIds } } : {};
-
-  const [items, recentChecks] = await Promise.all([
-    prisma.inventoryItem.findMany({
-      where,
-      include: { school: true },
-      orderBy: [{ school: { name: "asc" } }, { category: "asc" }, { itemName: "asc" }],
-    }),
-    prisma.inventoryCheck.findMany({
-      where: schoolIds ? { item: { schoolId: { in: schoolIds } } } : {},
-      include: { item: { include: { school: true } } },
-      orderBy: { checkedAt: "desc" },
-      take: 10,
-    }),
-  ]);
+  const { items, recentChecks } = await getInventoryReadModel(schoolIds);
 
   const pendingRemarks = items.filter((item) => !item.remarks || item.condition === "FAIR" || item.condition === "NEEDS_REPLACEMENT").length;
 

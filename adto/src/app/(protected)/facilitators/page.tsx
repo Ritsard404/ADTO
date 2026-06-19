@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { endAssignmentAction, upsertAssignmentAction } from "@/lib/actions/admin";
 import { requireRole } from "@/lib/auth";
+import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
+import { isMockDataMode } from "@/lib/runtime-mode";
 
 function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
@@ -15,18 +17,21 @@ function dateInputValue(date: Date | null) {
 
 export default async function FacilitatorsPage() {
   await requireRole(["ADMIN"]);
-  const [facilitators, schools, assignments] = await Promise.all([
-    prisma.profile.findMany({
-      where: { role: "FACILITATOR" },
-      include: { facilitatorAssignments: { include: { school: true }, orderBy: { startDate: "desc" } } },
-      orderBy: { fullName: "asc" },
-    }),
-    prisma.school.findMany({ orderBy: { name: "asc" } }),
-    prisma.facilitatorAssignment.findMany({
-      include: { school: true, facilitator: true },
-      orderBy: [{ status: "asc" }, { startDate: "desc" }],
-    }),
-  ]);
+  const mock = isMockDataMode() ? withMockRelations() : null;
+  const [facilitators, schools, assignments] = mock
+    ? [mock.facilitators, mock.schools, mock.assignments]
+    : await Promise.all([
+        prisma.profile.findMany({
+          where: { role: "FACILITATOR" },
+          include: { facilitatorAssignments: { include: { school: true }, orderBy: { startDate: "desc" } } },
+          orderBy: { fullName: "asc" },
+        }),
+        prisma.school.findMany({ orderBy: { name: "asc" } }),
+        prisma.facilitatorAssignment.findMany({
+          include: { school: true, facilitator: true },
+          orderBy: [{ status: "asc" }, { startDate: "desc" }],
+        }),
+      ]);
 
   return (
     <div className="space-y-6">

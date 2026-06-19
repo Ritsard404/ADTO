@@ -4,10 +4,14 @@ import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { prisma } from "@/lib/prisma";
+import { requireActiveProfile } from "@/lib/auth";
+import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
+import { getDashboardReadModel } from "@/lib/services/mockable-adms-read.service";
 
 export default async function DashboardPage() {
-  const [
+  const profile = await requireActiveProfile();
+  const schoolIds = await getAccessibleSchoolIds(profile);
+  const {
     schools,
     activeSchools,
     facilitators,
@@ -19,29 +23,12 @@ export default async function DashboardPage() {
     pendingReports,
     projects,
     pendingInventoryRemarks,
+    totalStudents,
+    codingHours,
+    activities,
+    assignedInventoryItems,
     schoolProgress,
-  ] = await Promise.all([
-    prisma.school.count(),
-    prisma.school.count({ where: { status: "ACTIVE" } }),
-    prisma.profile.count({ where: { role: "FACILITATOR" } }),
-    prisma.facilitatorAssignment.count({ where: { status: "ACTIVE" } }),
-    prisma.school.count({ where: { assignments: { none: { status: "ACTIVE" } } } }),
-    prisma.aCESession.count(),
-    prisma.aCESession.count({ where: { status: { in: ["NOT_STARTED", "ONGOING", "RESCHEDULED"] } } }),
-    prisma.aCESession.count({ where: { status: "COMPLETED" } }),
-    prisma.report.count({ where: { status: { in: ["DRAFT", "SUBMITTED"] } } }),
-    prisma.aCEProject.count(),
-    prisma.inventoryItem.count({ where: { OR: [{ remarks: null }, { condition: { in: ["FAIR", "NEEDS_REPLACEMENT"] } }] } }),
-    prisma.school.findMany({
-      take: 5,
-      include: {
-        sessions: {
-          select: { status: true },
-        },
-      },
-      orderBy: { name: "asc" },
-    }),
-  ]);
+  } = await getDashboardReadModel(schoolIds);
   const completionRate = sessions ? Math.round((completedSessions / sessions) * 100) : 0;
 
   return (
@@ -57,6 +44,14 @@ export default async function DashboardPage() {
         <MetricCard title="Active Sessions" value={activeSessions} description="Scheduled, ongoing, or rescheduled" icon={GraduationCap} accent="green" />
         <MetricCard title="Completion Rate" value={`${completionRate}%`} description={`${completedSessions} of ${sessions} sessions completed`} icon={Activity} accent="red" />
       </div>
+      {profile.role === "FACILITATOR" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricCard title="Students Reached" value={totalStudents} description="Assigned-school student coders" icon={Users} accent="blue" />
+          <MetricCard title="Coding Hours" value={codingHours} description="Delivered session hours" icon={Activity} accent="green" />
+          <MetricCard title="Activities Conducted" value={activities} description="Unique ACE activities encoded" icon={CalendarDays} accent="orange" />
+          <MetricCard title="Assigned Inventory" value={assignedInventoryItems} description="Inventory items in assigned schools" icon={Boxes} accent="red" />
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Projects" value={projects} description="Student-created ACE projects tracked" icon={FileText} accent="blue" />
         <MetricCard title="Pending Remarks" value={pendingInventoryRemarks} description="Inventory items needing verification notes" icon={Boxes} accent="orange" />

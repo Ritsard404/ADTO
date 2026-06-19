@@ -1,4 +1,6 @@
+import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
+import { isMockDataMode } from "@/lib/runtime-mode";
 
 function csvEscape(value: unknown) {
   const text = String(value ?? "");
@@ -10,6 +12,82 @@ function toCsv(headers: string[], rows: unknown[][]) {
 }
 
 export async function buildAdminCsvReport(type: string) {
+  if (isMockDataMode()) {
+    const mock = withMockRelations();
+    if (type === "schools") {
+      return toCsv(
+        ["School", "Address", "Contact", "Email", "School Year", "Status", "Active AF"],
+        mock.schools.map((school) => [
+          school.name,
+          school.address,
+          school.contactPerson,
+          school.contactEmail,
+          school.schoolYear,
+          school.status,
+          school.assignments.map((assignment) => assignment.facilitator.fullName).join("; "),
+        ]),
+      );
+    }
+    if (type === "assignments") {
+      return toCsv(
+        ["School", "Facilitator", "Email", "Start Date", "End Date", "Status"],
+        mock.assignments.map((assignment) => [
+          assignment.school.name,
+          assignment.facilitator.fullName,
+          assignment.facilitator.email,
+          assignment.startDate.toISOString().slice(0, 10),
+          assignment.endDate?.toISOString().slice(0, 10) ?? "",
+          assignment.status,
+        ]),
+      );
+    }
+    if (type === "projects") {
+      return toCsv(
+        ["School", "Session", "Term", "Grade", "Section", "Teacher", "Type", "Title", "Status", "Submitted", "Remarks", "URL"],
+        mock.projects.map((project) => [
+          project.school.name,
+          project.session?.title ?? "",
+          project.term,
+          project.gradeLevel,
+          project.section,
+          project.teacher,
+          project.projectType,
+          project.title,
+          project.status,
+          project.submittedAt?.toISOString().slice(0, 10) ?? "",
+          project.remarks,
+          project.projectUrl,
+        ]),
+      );
+    }
+    if (type === "inventory" || type === "inventory-remarks") {
+      return toCsv(
+        ["School", "Category", "Item", "Quantity", "Unit", "Condition", "Remarks", "Last Checked", "Checked By"],
+        mock.inventoryItems.map((item) => [
+          item.school.name,
+          item.category,
+          item.itemName,
+          item.quantity,
+          item.unit,
+          item.condition,
+          item.remarks,
+          item.lastCheckedAt?.toISOString().slice(0, 10) ?? "",
+          item.lastCheckedBy,
+        ]),
+      );
+    }
+    return toCsv(
+      ["Metric", "Value"],
+      [
+        ["Schools", mock.schools.length],
+        ["Facilitators", mock.facilitators.length],
+        ["Coding sessions", mock.sessions.length],
+        ["Projects", mock.projects.length],
+        ["Inventory requiring review", mock.inventoryItems.filter((item) => !item.remarks || item.condition === "FAIR" || item.condition === "NEEDS_REPLACEMENT").length],
+      ],
+    );
+  }
+
   if (type === "schools") {
     const schools = await prisma.school.findMany({
       include: { assignments: { where: { status: "ACTIVE" }, include: { facilitator: true } } },

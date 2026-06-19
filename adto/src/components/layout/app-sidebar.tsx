@@ -11,14 +11,14 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden w-[280px] shrink-0 border-r bg-sidebar px-4 py-5 lg:block">
+    <aside className="fixed inset-y-0 left-0 hidden w-[280px] shrink-0 border-r bg-sidebar px-3 py-4 lg:block">
       <div className="flex h-full flex-col">
         <ADTOBrandLockup />
-        <div className="mt-6 rounded-2xl border bg-background/70 p-3">
+        <div className="mt-4 rounded-lg border bg-background/70 p-3">
           <p className="truncate text-sm font-semibold text-foreground">{profile.fullName}</p>
           <p className="truncate text-xs text-muted-foreground">{profile.role.replace("_", " ")}</p>
         </div>
-        <nav className="mt-6 flex-1 space-y-5 overflow-y-auto pr-1">
+        <nav className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1">
           {navigationGroups.map((group) => {
             const items = group.items.filter((item) => item.roles.includes(profile.role));
 
@@ -39,7 +39,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                         key={group.title + item.href + item.title}
                         href={item.href}
                         className={cn(
-                          "adto-focus group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
+                          "adto-focus group relative flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-sidebar-foreground transition-colors hover:bg-sidebar-accent",
                           active && "bg-ace-blue/10 text-ace-blue",
                         )}
                       >
@@ -59,7 +59,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
             );
           })}
         </nav>
-        <div className="mt-6 rounded-2xl border bg-ace-sky/70 p-4">
+        <div className="mt-4 rounded-lg border bg-ace-sky/70 p-3">
           <p className="text-sm font-bold text-foreground">Tracking Every School&apos;s ACE Journey</p>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">School progress, sessions, reports, and resources in one workspace.</p>
         </div>

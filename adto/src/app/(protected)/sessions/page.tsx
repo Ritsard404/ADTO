@@ -1,5 +1,6 @@
 import { CalendarDays, ClipboardList, Plus } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
+import { BulkSessionEncoder } from "@/components/sessions/bulk-session-encoder";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { updateSessionAction, upsertProjectAction } from "@/lib/actions/adms-workflow";
+import { createActivityCategoryAction, upsertAdminSessionAction } from "@/lib/actions/admin";
+import { bulkCreateSessionsAction, createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/lib/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
-import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
+import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
+import { isMockDataMode } from "@/lib/runtime-mode";
+import { getAccessibleSchoolIds } from "@/lib/services/adms-workflow.service";
+import { getSessionsReadModel } from "@/lib/services/mockable-adms-read.service";
 
 function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
@@ -23,27 +28,17 @@ function monthLabel(date: Date) {
 export default async function SessionsPage() {
   const profile = await requireActiveProfile();
   const schoolIds = await getAccessibleSchoolIds(profile);
-  const schoolFilter = schoolIds ? { schoolId: { in: schoolIds } } : {};
+  const { sessions, schools, projects } = await getSessionsReadModel(schoolIds);
+  const mock = isMockDataMode() ? withMockRelations() : null;
+  const facilitators = mock
+    ? mock.facilitators
+    : await prisma.profile.findMany({ where: { role: "FACILITATOR", status: "ACTIVE" }, orderBy: { fullName: "asc" } });
+  const activityCategories = mock
+    ? ["Onboarding", "Orientation", "Coding Session", "Build and Code Session", "Project Creation", "Showcase"]
+    : await prisma.activityCategory.findMany({ where: { isActive: true }, orderBy: { name: "asc" } });
 
-  const [sessions, schools, projects] = await Promise.all([
-    prisma.aCESession.findMany({
-      where: schoolFilter,
-      include: { school: true, facilitator: true },
-      orderBy: [{ scheduledDate: "asc" }, { gradeLevel: "asc" }, { section: "asc" }],
-    }),
-    prisma.school.findMany({
-      where: schoolIds ? { id: { in: schoolIds } } : {},
-      orderBy: { name: "asc" },
-    }),
-    prisma.aCEProject.findMany({
-      where: schoolIds ? { schoolId: { in: schoolIds } } : {},
-      include: { school: true, session: true },
-      orderBy: [{ updatedAt: "desc" }],
-      take: 25,
-    }),
-  ]);
-
-  const sessionsByMonth = sessions.reduce<Record<string, typeof sessions>>((groups, session) => {
+  type SessionRow = (typeof sessions)[number];
+  const sessionsByMonth = sessions.reduce<Record<string, SessionRow[]>>((groups, session) => {
     const key = monthLabel(session.scheduledDate);
     groups[key] = groups[key] ?? [];
     groups[key].push(session);
@@ -57,6 +52,199 @@ export default async function SessionsPage() {
         title="ACE Sessions"
         description="Update monthly ADMS sessions, facilitator remarks, and student-created ACE project records from the Excel workbook flow."
       />
+
+      {profile.role === "ADMIN" ? (
+        <Card className="adto-card">
+          <CardHeader>
+            <CardTitle>Admin Session Management</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form action={upsertAdminSessionAction} className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <Label>
+                School
+                <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <Label>
+                Facilitator
+                <select name="facilitatorId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {facilitators.map((facilitator) => (
+                    <option key={facilitator.id} value={facilitator.id}>
+                      {facilitator.fullName}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <Label>
+                Title
+                <Input name="title" defaultValue="Coding Session" className="mt-1" />
+              </Label>
+              <Label>
+                Date
+                <Input name="scheduledDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1" />
+              </Label>
+              <Label>
+                Time
+                <Input name="startTime" type="time" className="mt-1" />
+              </Label>
+              <Label>
+                Duration
+                <Input name="durationHours" type="number" step="0.25" min="0" defaultValue="1" className="mt-1" />
+              </Label>
+              <Label>
+                Grade
+                <Input name="gradeLevel" defaultValue="Grade 7" className="mt-1" />
+              </Label>
+              <Label>
+                Section
+                <Input name="section" defaultValue="St. Francis" className="mt-1" />
+              </Label>
+              <Label>
+                Subject
+                <Input name="subject" defaultValue="Computer" className="mt-1" />
+              </Label>
+              <Label>
+                Teacher
+                <Input name="teacher" className="mt-1" />
+              </Label>
+              <Label>
+                Activity
+                <select name="activity" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {activityCategories.map((activity) => {
+                    const name = typeof activity === "string" ? activity : activity.name;
+                    return (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </Label>
+              <Label>
+                Modality
+                <Input name="delivery" defaultValue="Classroom" className="mt-1" />
+              </Label>
+              <Label>
+                Session #
+                <Input name="sessionNumber" type="number" min="1" defaultValue={sessions.length + 1} className="mt-1" />
+              </Label>
+              <Label>
+                Status
+                <select name="status" defaultValue="NOT_STARTED" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {["NOT_STARTED", "ONGOING", "COMPLETED", "MISSED", "RESCHEDULED", "CANCELLED"].map((status) => (
+                    <option key={status} value={status}>
+                      {status.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <div className="flex items-end">
+                <Button type="submit">Create session</Button>
+              </div>
+            </form>
+            <form action={createActivityCategoryAction} className="grid gap-3 md:grid-cols-[1fr_2fr_auto]">
+              <Input name="name" placeholder="New activity category" />
+              <Input name="description" placeholder="Description" />
+              <Button type="submit" variant="outline">Add activity</Button>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {profile.role === "FACILITATOR" ? (
+        <Card className="adto-card">
+          <CardHeader>
+            <CardTitle>Create ACE Session</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={createFacilitatorSessionAction} className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+              <Label>
+                School
+                <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <Label>
+                Session title
+                <Input name="title" defaultValue="Coding Session" className="mt-1" />
+              </Label>
+              <Label>
+                Date
+                <Input name="scheduledDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1" />
+              </Label>
+              <Label>
+                Time
+                <Input name="startTime" type="time" className="mt-1" />
+              </Label>
+              <Label>
+                Duration
+                <Input name="durationHours" type="number" step="0.25" min="0" defaultValue="1" className="mt-1" />
+              </Label>
+              <Label>
+                Grade
+                <Input name="gradeLevel" defaultValue="Grade 7" className="mt-1" />
+              </Label>
+              <Label>
+                Section
+                <Input name="section" defaultValue="St. Francis" className="mt-1" />
+              </Label>
+              <Label>
+                Subject
+                <Input name="subject" defaultValue="Computer" className="mt-1" />
+              </Label>
+              <Label>
+                Teacher
+                <Input name="teacher" className="mt-1" />
+              </Label>
+              <Label>
+                Activity
+                <select name="activity" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {["Onboarding", "Student Orientation", "Coding Session", "Build and Code Session", "Project Creation", "Project Revision", "Consultation", "Assessment", "Competition", "Showcase"].map((activity) => (
+                    <option key={activity} value={activity}>
+                      {activity}
+                    </option>
+                  ))}
+                </select>
+              </Label>
+              <Label>
+                Modality
+                <Input name="delivery" defaultValue="Classroom" className="mt-1" />
+              </Label>
+              <Label>
+                Session #
+                <Input name="sessionNumber" type="number" min="1" defaultValue={sessions.length + 1} className="mt-1" />
+              </Label>
+              <Label className="md:col-span-2">
+                Remarks
+                <Textarea name="remarks" className="mt-1 min-h-20" />
+              </Label>
+              <div className="flex items-end">
+                <Button type="submit">Create session</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {(profile.role === "ADMIN" || profile.role === "FACILITATOR") && schools.length ? (
+        <Card className="adto-card">
+          <CardHeader>
+            <CardTitle>Spreadsheet Session Encoder</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <BulkSessionEncoder schools={schools.map((school) => ({ id: school.id, name: school.name }))} action={bulkCreateSessionsAction} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="adto-card">

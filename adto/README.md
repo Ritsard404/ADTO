@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ADTO
 
-## Getting Started
+ACE Database and Tracking Operations for ADMS school implementation workflows.
 
-First, run the development server:
+## Data Modes
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+ADTO supports a reusable data-mode switch:
+
+```env
+ADTO_DATA_MODE=production
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use `production` for real database reads and writes.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+ADTO_DATA_MODE=mock
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Use `mock` for UI testing with reusable sample schools, sessions, projects, inventory, reports, users, and report history. Mock mode is read-only and is automatically disabled in `NODE_ENV=production`.
 
-## Learn More
+## Local UI Testing With Mock Data
 
-To learn more about Next.js, take a look at the following resources:
+On Windows:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```powershell
+npm run dev:mock
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This enables:
 
-## Deploy on Vercel
+- `ADTO_DATA_MODE=mock`
+- `ADTO_AUTH_BYPASS=true`
+- role switching in the app header
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Mock mode lets testers inspect Admin, Facilitator, and School Admin screens without depending on seeded database records or writing to production data.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Production Development
+
+```powershell
+npm run dev
+```
+
+Production-like mode reads from the configured database and allows writes based on RBAC.
+
+## Database
+
+Apply migrations:
+
+```powershell
+npm run prisma:deploy
+```
+
+Inspect migration status:
+
+```powershell
+npx prisma migrate status
+```

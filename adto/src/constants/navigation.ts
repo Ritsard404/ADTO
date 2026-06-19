@@ -33,7 +33,7 @@ export const navigationGroups: NavGroup[] = [
   {
     title: "Management",
     items: [
-      { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN"] },
+      { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Facilitators", href: "/facilitators", icon: Users, roles: ["ADMIN"] },
       { title: "Assignments", href: "/facilitators", icon: ClipboardList, roles: ["ADMIN"] },
     ],

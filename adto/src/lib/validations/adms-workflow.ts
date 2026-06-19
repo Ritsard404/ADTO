@@ -33,3 +33,69 @@ export const inventoryVerificationSchema = z.object({
   quantity: z.coerce.number().int().min(0),
   remarks: optionalText(1000),
 });
+
+export const facilitatorSessionCreateSchema = z.object({
+  schoolId: z.string().min(1),
+  title: z.string().trim().min(1).max(160),
+  gradeLevel: z.string().trim().min(1).max(40),
+  section: z.string().trim().min(1).max(120),
+  sessionNumber: z.coerce.number().int().min(1),
+  scheduledDate: z.string().trim().min(1),
+  startTime: optionalText(20),
+  durationHours: z.coerce.number().min(0).max(12).optional(),
+  subject: optionalText(120),
+  teacher: optionalText(160),
+  activity: optionalText(120),
+  delivery: optionalText(120),
+  remarks: optionalText(1000),
+});
+
+export const facilitatorSectionUpsertSchema = z.object({
+  sectionId: z.string().uuid().optional().or(z.literal("")),
+  schoolId: z.string().min(1),
+  schoolYear: z.string().trim().min(1).max(40),
+  gradeLevel: z.string().trim().min(1).max(40),
+  sectionName: z.string().trim().min(1).max(120),
+  adviserName: optionalText(160),
+  maleStudents: z.coerce.number().int().min(0),
+  femaleStudents: z.coerce.number().int().min(0),
+  isActive: z.enum(["true", "false"]).default("true"),
+});
+
+export const facilitatorTeacherCreateSchema = z.object({
+  schoolId: z.string().min(1),
+  fullName: z.string().trim().min(1).max(160),
+  department: optionalText(120),
+  email: optionalText(180),
+  contactNumber: optionalText(80),
+  position: optionalText(120),
+  employmentStatus: optionalText(80),
+  gradeLevel: optionalText(40),
+  sectionId: optionalText(80),
+  schoolYear: optionalText(40),
+  subject: optionalText(120),
+});
+
+export const facilitatorMonthlyReportSchema = z.object({
+  schoolId: z.string().min(1),
+  schoolYear: z.string().trim().min(1).max(40),
+  title: z.string().trim().min(1).max(160),
+  accomplishments: z.string().trim().min(1).max(2000),
+  challenges: optionalText(2000),
+  recommendations: optionalText(2000),
+  schoolUpdates: optionalText(2000),
+});
+
+export const facilitatorSchoolRemarkSchema = z.object({
+  schoolId: z.string().min(1),
+  schoolYear: z.string().trim().min(1).max(40),
+  period: z.string().trim().min(1).max(80),
+  remarkType: z.string().trim().min(1).max(80),
+  title: z.string().trim().min(1).max(160),
+  details: z.string().trim().min(1).max(2000),
+  actionItems: optionalText(1500),
+});
+
+export const bulkSessionRowsSchema = z.object({
+  rowsJson: z.string().min(2),
+});

@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createUserAction, updateUserAction } from "@/lib/actions/admin";
 import { requireRole } from "@/lib/auth";
+import { mockProfiles } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
+import { isMockDataMode } from "@/lib/runtime-mode";
 
 export default async function SettingsPage({
   searchParams,
@@ -20,16 +22,21 @@ export default async function SettingsPage({
   const role = params.role && params.role !== "ALL" ? params.role : undefined;
   const status = params.status && params.status !== "ALL" ? params.status : undefined;
 
-  const users = await prisma.profile.findMany({
-    where: {
-      role: role ? (role as "ADMIN" | "FACILITATOR" | "SCHOOL_ADMIN") : undefined,
-      status: status ? (status as "PENDING" | "ACTIVE" | "DISABLED") : undefined,
-      OR: query
-        ? [{ fullName: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }]
-        : undefined,
-    },
-    orderBy: [{ role: "asc" }, { fullName: "asc" }],
-  });
+  const users = isMockDataMode()
+    ? mockProfiles
+        .filter((user) => !role || user.role === role)
+        .filter((user) => !status || user.status === status)
+        .filter((user) => !query || [user.fullName, user.email].some((value) => value.toLowerCase().includes(query.toLowerCase())))
+    : await prisma.profile.findMany({
+        where: {
+          role: role ? (role as "ADMIN" | "FACILITATOR" | "SCHOOL_ADMIN") : undefined,
+          status: status ? (status as "PENDING" | "ACTIVE" | "DISABLED") : undefined,
+          OR: query
+            ? [{ fullName: { contains: query, mode: "insensitive" } }, { email: { contains: query, mode: "insensitive" } }]
+            : undefined,
+        },
+        orderBy: [{ role: "asc" }, { fullName: "asc" }],
+      });
 
   return (
     <div className="space-y-6">

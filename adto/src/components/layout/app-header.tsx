@@ -5,8 +5,11 @@ import { Separator } from "@/components/ui/separator";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { SignOutButton } from "@/components/layout/sign-out-button";
 import { TestRoleSwitcher } from "@/components/layout/test-role-switcher";
+import { getDataMode } from "@/lib/runtime-mode";
 
 export function AppHeader({ profile }: { profile: Profile }) {
+  const dataMode = getDataMode();
+
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-card/95 px-4 backdrop-blur lg:px-8">
       <div className="flex items-center gap-3">
@@ -20,6 +23,7 @@ export function AppHeader({ profile }: { profile: Profile }) {
         </div>
       </div>
       <div className="flex items-center gap-3">
+        {dataMode === "mock" ? <StatusBadge status="MOCK DATA" /> : null}
         <TestRoleSwitcher activeRole={profile.role} />
         <StatusBadge status={profile.role} />
         <Separator orientation="vertical" className="h-6" />
