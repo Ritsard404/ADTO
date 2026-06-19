@@ -7,9 +7,25 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { prisma } from "@/lib/prisma";
 
 export default async function DashboardPage() {
-  const [schools, facilitators, sessions, activeSessions, completedSessions, pendingReports, projects, pendingInventoryRemarks, schoolProgress] = await Promise.all([
+  const [
+    schools,
+    activeSchools,
+    facilitators,
+    assignedFacilitators,
+    unassignedSchools,
+    sessions,
+    activeSessions,
+    completedSessions,
+    pendingReports,
+    projects,
+    pendingInventoryRemarks,
+    schoolProgress,
+  ] = await Promise.all([
     prisma.school.count(),
+    prisma.school.count({ where: { status: "ACTIVE" } }),
     prisma.profile.count({ where: { role: "FACILITATOR" } }),
+    prisma.facilitatorAssignment.count({ where: { status: "ACTIVE" } }),
+    prisma.school.count({ where: { assignments: { none: { status: "ACTIVE" } } } }),
     prisma.aCESession.count(),
     prisma.aCESession.count({ where: { status: { in: ["NOT_STARTED", "ONGOING", "RESCHEDULED"] } } }),
     prisma.aCESession.count({ where: { status: "COMPLETED" } }),
@@ -36,7 +52,8 @@ export default async function DashboardPage() {
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard title="Total Schools" value={schools} description="Schools tracked in ADTO" icon={School} accent="blue" />
-        <MetricCard title="Total Facilitators" value={facilitators} description="ACE facilitators on record" icon={Users} accent="orange" />
+        <MetricCard title="Active Schools" value={activeSchools} description={`${unassignedSchools} schools need AF assignment`} icon={School} accent="orange" />
+        <MetricCard title="Total Facilitators" value={facilitators} description={`${assignedFacilitators} active AF assignments`} icon={Users} accent="orange" />
         <MetricCard title="Active Sessions" value={activeSessions} description="Scheduled, ongoing, or rescheduled" icon={GraduationCap} accent="green" />
         <MetricCard title="Completion Rate" value={`${completionRate}%`} description={`${completedSessions} of ${sessions} sessions completed`} icon={Activity} accent="red" />
       </div>

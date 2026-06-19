@@ -1,10 +1,13 @@
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { requireActiveProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function ReportsPage() {
+  const profile = await requireActiveProfile();
   const reports = await prisma.report.findMany({
     include: { school: true, facilitator: true },
     orderBy: { title: "asc" },
@@ -13,6 +16,27 @@ export default async function ReportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Reports" description="Review submitted ACE reports, year-end summaries, and implementation documentation." />
+    {profile.role === "ADMIN" ? (
+      <Card className="adto-card">
+        <CardHeader>
+          <CardTitle>Admin Downloads</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            ["summary", "Overall ADMS summary"],
+            ["schools", "School summary"],
+            ["assignments", "AF assignment report"],
+            ["projects", "Project report"],
+            ["inventory", "Inventory report"],
+            ["inventory-remarks", "Inventory remarks report"],
+          ].map(([type, label]) => (
+            <Button key={type} asChild variant="outline">
+              <a href={`/reports/download?type=${type}`}>{label}</a>
+            </Button>
+          ))}
+        </CardContent>
+      </Card>
+    ) : null}
     <Card className="adto-card">
       <CardHeader>
         <CardTitle>Reports</CardTitle>
