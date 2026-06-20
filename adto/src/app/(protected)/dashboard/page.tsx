@@ -1,310 +1,259 @@
-import { Activity, AlertTriangle, Boxes, CalendarDays, FileText, GraduationCap, School, Users } from "lucide-react";
-import { MetricCard } from "@/components/dashboard/metric-card";
+import { CalendarDays, Filter } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
-import { StatusBadge } from "@/components/common/status-badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getCompactDashboardReadModel, statusLabel } from "@/features/dashboard/services/compact-dashboard.service";
 import { requireActiveProfile } from "@/lib/auth";
-import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
-import { getDashboardReadModel } from "@/features/dashboard/services/dashboard-read.service";
-import { getAdminWorkbookGovernanceReadModel } from "@/features/admin/services/workbook-governance.service";
+
+const weekLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function dayKey(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function buildMonthCells(month: string) {
+  const start = new Date(`${month}-01T00:00:00`);
+  const first = new Date(start);
+  first.setDate(1 - first.getDay());
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(first);
+    date.setDate(first.getDate() + index);
+    return date;
+  });
+}
+
+function statusClass(label: string) {
+  if (label === "Completed") return "border-emerald-500 bg-emerald-100 text-emerald-900";
+  if (label === "Cancelled") return "border-red-500 bg-red-100 text-red-900";
+  if (label === "Scheduled") return "border-amber-500 bg-amber-100 text-amber-950";
+  return "border-slate-300 bg-white text-slate-700";
+}
+
+function CompactCell({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="border-r border-emerald-900/30 px-2 py-1.5 last:border-r-0">
+      <p className="text-[10px] uppercase tracking-wide text-emerald-50/75">{label}</p>
+      <p className="truncate text-[13px] font-bold text-white">{value}</p>
+    </div>
+  );
+}
 
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams: Promise<{ schoolId?: string; month?: string; term?: string; facilitatorId?: string; status?: string; adoptionType?: string }>;
+  searchParams: Promise<{ schoolId?: string; month?: string; grade?: string; teacher?: string; activity?: string; status?: string }>;
 }) {
   const profile = await requireActiveProfile();
   const params = await searchParams;
-  const schoolIds = await getAccessibleSchoolIds(profile);
-  const {
-    schools,
-    activeSchools,
-    facilitators,
-    assignedFacilitators,
-    unassignedSchools,
-    sessions,
-    activeSessions,
-    completedSessions,
-    pendingReports,
-    projects,
-    pendingInventoryRemarks,
-    totalStudents,
-    codingHours,
-    activities,
-    assignedInventoryItems,
-    schoolProgress,
-  } = await getDashboardReadModel(schoolIds);
-  const adminWorkbook = profile.role === "ADMIN" ? await getAdminWorkbookGovernanceReadModel(params) : null;
-  const completionRate = sessions ? Math.round((completedSessions / sessions) * 100) : 0;
+  const dashboard = await getCompactDashboardReadModel(profile, params);
+  const monthCells = buildMonthCells(dashboard.monthKey);
+  const visibleMonth = new Date(`${dashboard.monthKey}-01T00:00:00`).getMonth();
+  const remainingSessions = Math.max(dashboard.summary.scheduledSessions - dashboard.summary.completedSessions - dashboard.summary.cancelledSessions, 0);
+  const projectActivity = dashboard.summary.projectsCreated;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-3 text-[12px]">
       <PageHeader
-        title="Dashboard"
-        description="A live ACE implementation snapshot for school coverage, facilitator activity, active sessions, reports, and completion progress."
+        title="ACE Calendar Dashboard"
+        description="Compact workbook-style implementation view for school sessions, calendar progress, teacher participation, projects, and operational notes."
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total Schools" value={schools} description="Schools tracked in ADTO" icon={School} accent="blue" />
-        <MetricCard title="Active Schools" value={activeSchools} description={`${unassignedSchools} schools need AF assignment`} icon={School} accent="orange" />
-        <MetricCard title="Total Facilitators" value={facilitators} description={`${assignedFacilitators} active AF assignments`} icon={Users} accent="orange" />
-        <MetricCard title="Active Sessions" value={activeSessions} description="Scheduled, ongoing, or rescheduled" icon={GraduationCap} accent="green" />
-        <MetricCard title="Completion Rate" value={`${completionRate}%`} description={`${completedSessions} of ${sessions} sessions completed`} icon={Activity} accent="red" />
-      </div>
-      {profile.role === "FACILITATOR" ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <MetricCard title="Students Reached" value={totalStudents} description="Assigned-school student coders" icon={Users} accent="blue" />
-          <MetricCard title="Coding Hours" value={codingHours} description="Delivered session hours" icon={Activity} accent="green" />
-          <MetricCard title="Activities Conducted" value={activities} description="Unique ACE activities encoded" icon={CalendarDays} accent="orange" />
-          <MetricCard title="Assigned Inventory" value={assignedInventoryItems} description="Inventory items in assigned schools" icon={Boxes} accent="red" />
+
+      <form className="grid gap-2 border border-emerald-900/20 bg-[#f6fbf2] p-2 md:grid-cols-6">
+        <select name="schoolId" defaultValue={dashboard.selectedSchool?.id ?? ""} className="h-8 border border-emerald-900/20 bg-white px-2 text-[12px]">
+          {dashboard.schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+        </select>
+        <input name="month" type="month" defaultValue={dashboard.monthKey} className="h-8 border border-emerald-900/20 bg-white px-2 text-[12px]" />
+        <select name="grade" defaultValue={params.grade ?? ""} className="h-8 border border-emerald-900/20 bg-white px-2 text-[12px]">
+          <option value="">All grades</option>
+          {dashboard.filters.grades.map((grade) => <option key={grade} value={grade}>{grade}</option>)}
+        </select>
+        <select name="teacher" defaultValue={params.teacher ?? ""} className="h-8 border border-emerald-900/20 bg-white px-2 text-[12px]">
+          <option value="">All teachers</option>
+          {dashboard.filters.teachers.map((teacher) => <option key={teacher} value={teacher}>{teacher}</option>)}
+        </select>
+        <select name="activity" defaultValue={params.activity ?? ""} className="h-8 border border-emerald-900/20 bg-white px-2 text-[12px]">
+          <option value="">All activities</option>
+          {dashboard.filters.activities.map((activity) => <option key={activity} value={activity}>{activity}</option>)}
+        </select>
+        <div className="flex gap-2">
+          <select name="status" defaultValue={params.status ?? ""} className="h-8 min-w-0 flex-1 border border-emerald-900/20 bg-white px-2 text-[12px]">
+            <option value="">All status</option>
+            {dashboard.filters.statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
+          </select>
+          <Button type="submit" size="sm" className="h-8 rounded-none bg-[#14532d] px-2 text-[12px]">
+            <Filter className="size-3" />
+            Apply
+          </Button>
         </div>
-      ) : null}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Projects" value={projects} description="Student-created ACE projects tracked" icon={FileText} accent="blue" />
-        <MetricCard title="Pending Remarks" value={pendingInventoryRemarks} description="Inventory items needing verification notes" icon={Boxes} accent="orange" />
-        <MetricCard title="Session Updates" value={activeSessions} description="Facilitator session records still open" icon={CalendarDays} accent="green" />
-        <MetricCard title="Reports Pending" value={pendingReports} description="Draft or submitted reports" icon={FileText} accent="red" />
-      </div>
-      {adminWorkbook ? (
-        <div className="space-y-6">
-          <Card className="adto-card">
-            <CardHeader>
-              <CardTitle className="text-2xl">Workbook QuickView Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                <select name="schoolId" defaultValue={params.schoolId ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">All schools</option>
-                  {adminWorkbook.filters.schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-                </select>
-                <input name="month" type="month" defaultValue={params.month ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
-                <input name="term" defaultValue={params.term ?? ""} placeholder="Term / quarter" className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
-                <select name="facilitatorId" defaultValue={params.facilitatorId ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">All facilitators</option>
-                  {adminWorkbook.filters.facilitators.map((facilitator) => <option key={facilitator.id} value={facilitator.id}>{facilitator.fullName}</option>)}
-                </select>
-                <select name="status" defaultValue={params.status ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">All statuses</option>
-                  {["ACTIVE", "INACTIVE", "ARCHIVED"].map((statusOption) => <option key={statusOption} value={statusOption}>{statusOption}</option>)}
-                </select>
-                <select name="adoptionType" defaultValue={params.adoptionType ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
-                  <option value="">All adoption types</option>
-                  {adminWorkbook.filters.adoptionTypes.map((type) => <option key={type} value={type}>{type}</option>)}
-                </select>
-                <Button type="submit" className="xl:col-start-6">Apply</Button>
-              </form>
-            </CardContent>
-          </Card>
+      </form>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricCard title="Scheduled Sessions" value={adminWorkbook.totals.scheduledSessions} description="Workbook-style scheduled rows" icon={CalendarDays} accent="blue" />
-            <MetricCard title="Completed Sessions" value={adminWorkbook.totals.completedSessions} description={`${adminWorkbook.totals.cancelledSessions} cancelled`} icon={GraduationCap} accent="green" />
-            <MetricCard title="Coding Hours" value={adminWorkbook.totals.codingHours} description={`${adminWorkbook.totals.activeCoders} active coders`} icon={Activity} accent="orange" />
-            <MetricCard title="Needs Attention" value={adminWorkbook.totals.schoolsNeedingAttention} description="Schools with setup or evidence gaps" icon={AlertTriangle} accent="red" />
+      <section className="grid border border-emerald-950 bg-[#14532d] md:grid-cols-4 xl:grid-cols-12">
+        <CompactCell label="School" value={dashboard.summary.schoolName} />
+        <CompactCell label="School Year" value={dashboard.summary.schoolYear} />
+        <CompactCell label="Facilitator" value={dashboard.summary.assignedFacilitator} />
+        <CompactCell label="Month" value={dashboard.summary.currentMonth} />
+        <CompactCell label="Term" value={dashboard.summary.currentTerm} />
+        <CompactCell label="Scheduled" value={dashboard.summary.scheduledSessions} />
+        <CompactCell label="Completed" value={dashboard.summary.completedSessions} />
+        <CompactCell label="Cancelled" value={dashboard.summary.cancelledSessions} />
+        <CompactCell label="Hours" value={dashboard.summary.codingHours} />
+        <CompactCell label="Coders" value={dashboard.summary.activeCoders} />
+        <CompactCell label="Projects" value={dashboard.summary.projectsCreated} />
+        <CompactCell label="Teachers" value={dashboard.summary.activeTeachers} />
+      </section>
+
+      <div className="grid gap-3 xl:grid-cols-[210px_1fr_360px]">
+        <aside className="space-y-2 border border-emerald-900/20 bg-[#f8fbf1] p-2 xl:sticky xl:top-20 xl:self-start">
+          <div className="border-b border-emerald-900/20 pb-2">
+            <p className="text-[10px] uppercase text-emerald-900/70">Today</p>
+            <p className="text-lg font-bold text-[#14532d]">{new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+            <p className="text-[11px] text-emerald-900/70">{dashboard.summary.currentMonth}</p>
           </div>
-
-          <Card className="adto-card">
-            <CardHeader>
-              <CardTitle className="text-2xl">Admin Cross-School Workbook QuickView</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>School</TableHead>
-                    <TableHead>Form</TableHead>
-                    <TableHead>AF</TableHead>
-                    <TableHead>Sessions</TableHead>
-                    <TableHead>Hours</TableHead>
-                    <TableHead>Coders</TableHead>
-                    <TableHead>Projects</TableHead>
-                    <TableHead>Teachers</TableHead>
-                    <TableHead>Attention</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {adminWorkbook.schoolRows.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="font-medium">{row.name}<span className="block text-xs text-muted-foreground">{row.adoptionType}</span></TableCell>
-                      <TableCell>{row.deployedFormId}<span className="block text-xs text-muted-foreground">{row.schoolCode}</span></TableCell>
-                      <TableCell>{row.facilitatorNames}</TableCell>
-                      <TableCell>{row.completedSessions}/{row.scheduledSessions}<span className="block text-xs text-muted-foreground">{row.cancelledSessions} cancelled</span></TableCell>
-                      <TableCell>{row.codingHours}</TableCell>
-                      <TableCell>{row.activeCoders}</TableCell>
-                      <TableCell>{row.projectCount}<span className="block max-w-48 truncate text-xs text-muted-foreground">{row.projectTypeMix || "No mix yet"}</span></TableCell>
-                      <TableCell>{row.teachersInvolved}</TableCell>
-                      <TableCell className="max-w-64 text-xs text-muted-foreground">{row.attention.join(", ") || "Clear"}</TableCell>
-                    </TableRow>
-                  ))}
-                  {!adminWorkbook.schoolRows.length ? (
-                    <TableRow><TableCell colSpan={9} className="text-muted-foreground">No schools match the selected workbook filters.</TableCell></TableRow>
-                  ) : null}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Card className="adto-card">
-              <CardHeader><CardTitle>Assignment And Coverage Governance</CardTitle></CardHeader>
-              <CardContent className="grid gap-3 text-sm">
-                {[
-                  ["Unassigned schools", adminWorkbook.coverage.unassignedSchools],
-                  ["Overloaded facilitators", adminWorkbook.coverage.overloadedFacilitators],
-                  ["Inactive AF with active assignment", adminWorkbook.coverage.inactiveFacilitatorsWithActiveAssignments],
-                  ["Schools with multiple active AFs", adminWorkbook.coverage.schoolsWithMultipleActiveAssignments],
-                ].map(([label, values]) => (
-                  <div key={label as string} className="rounded-lg border p-3">
-                    <p className="font-semibold">{label as string}</p>
-                    <p className="mt-1 text-muted-foreground">{(values as string[]).join(", ") || "None"}</p>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            <Card className="adto-card">
-              <CardHeader><CardTitle>Data Quality Queue</CardTitle></CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader><TableRow><TableHead>School</TableHead><TableHead>Issue</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {adminWorkbook.queues.dataQuality.map((item) => (
-                      <TableRow key={`${item.school}-${item.issue}`}><TableCell>{item.school}</TableCell><TableCell>{item.issue}</TableCell></TableRow>
-                    ))}
-                    {!adminWorkbook.queues.dataQuality.length ? <TableRow><TableCell colSpan={2} className="text-muted-foreground">No report-blocking data quality issues found.</TableCell></TableRow> : null}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-7 border-l border-t border-emerald-900/20 text-center">
+            {weekLabels.map((label) => <span key={label} className="border-b border-r border-emerald-900/20 bg-[#d9ead3] py-1 text-[10px] font-bold text-[#14532d]">{label[0]}</span>)}
+            {monthCells.map((date) => {
+              const count = dashboard.sessionsByDay[dayKey(date)]?.length ?? 0;
+              return (
+                <span key={date.toISOString()} className={`min-h-7 border-b border-r border-emerald-900/20 py-1 text-[10px] ${date.getMonth() === visibleMonth ? "bg-white" : "bg-slate-50 text-slate-400"}`}>
+                  {date.getDate()}
+                  {count ? <b className="ml-0.5 text-emerald-700">{count}</b> : null}
+                </span>
+              );
+            })}
           </div>
-
-          <Card className="adto-card">
-            <CardHeader><CardTitle>Workbook Import Review Preview</CardTitle></CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader><TableRow><TableHead>Sheet</TableHead><TableHead>Rows</TableHead><TableHead>Sample fields</TableHead><TableHead>Validation notes</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {adminWorkbook.importPreview.map((sheet) => (
-                    <TableRow key={sheet.sheet}>
-                      <TableCell className="font-medium">{sheet.sheet}</TableCell>
-                      <TableCell>{sheet.rowsRead}</TableCell>
-                      <TableCell className="max-w-96 truncate text-xs text-muted-foreground">{sheet.sample[0] ? Object.keys(sheet.sample[0]).join(", ") : "No sample rows"}</TableCell>
-                      <TableCell className="max-w-96 text-xs text-muted-foreground">{sheet.errors.slice(0, 3).map((error) => `Row ${error.row} ${error.field}: ${error.message}`).join("; ") || "Ready for review"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 xl:grid-cols-2">
-            <Card className="adto-card">
-              <CardHeader><CardTitle>Audit Trail</CardTitle></CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader><TableRow><TableHead>Entity</TableHead><TableHead>Action</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {adminWorkbook.queues.auditLogs.map((log) => (
-                      <TableRow key={log.id}><TableCell>{log.entityType}</TableCell><TableCell>{log.action}</TableCell><TableCell>{log.createdAt.toLocaleDateString("en-US")}</TableCell></TableRow>
-                    ))}
-                    {!adminWorkbook.queues.auditLogs.length ? <TableRow><TableCell colSpan={3} className="text-muted-foreground">No audit records yet.</TableCell></TableRow> : null}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-            <Card className="adto-card">
-              <CardHeader><CardTitle>Approvals And Report History</CardTitle></CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Status</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                    {adminWorkbook.queues.approvalRequests.map((request) => (
-                      <TableRow key={request.id}><TableCell>{request.entityType} {request.action}</TableCell><TableCell>{request.status}</TableCell><TableCell>{request.createdAt.toLocaleDateString("en-US")}</TableCell></TableRow>
-                    ))}
-                    {adminWorkbook.queues.reportHistory.map((entry) => (
-                      <TableRow key={entry.id}><TableCell>{entry.school.name} {entry.reportType}</TableCell><TableCell>Generated</TableCell><TableCell>{entry.generatedAt.toLocaleDateString("en-US")}</TableCell></TableRow>
-                    ))}
-                    {!adminWorkbook.queues.approvalRequests.length && !adminWorkbook.queues.reportHistory.length ? <TableRow><TableCell colSpan={3} className="text-muted-foreground">No approvals or report history yet.</TableCell></TableRow> : null}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <div className="space-y-1 text-[11px] text-emerald-950">
+            <p><b>Form:</b> {dashboard.summary.deployedFormId}</p>
+            <p><b>Adoption:</b> {dashboard.summary.adoptionType}</p>
+            <p><b>Project mix:</b> {dashboard.summary.projectMix || "No projects yet"}</p>
           </div>
-        </div>
-      ) : null}
-      <div className="grid gap-6 xl:grid-cols-[1.45fr_0.85fr]">
-      <Card className="adto-card">
-        <CardHeader>
-          <CardTitle className="text-2xl">Progress by School</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>School</TableHead>
-                <TableHead>School Year</TableHead>
-                <TableHead>Completed</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {schoolProgress.map((school) => {
-                const completed = school.sessions.filter((session) => session.status === "COMPLETED").length;
-                const total = school.sessions.length;
-                const progress = total ? Math.round((completed / total) * 100) : 0;
+        </aside>
+
+        <main className="space-y-3">
+          <section className="grid gap-3 lg:grid-cols-[1fr_260px]">
+            <div className="border border-emerald-900/20">
+              <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">Academic Calendar Overview</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse bg-[#fffdf3] text-left text-[11px]">
+                  <thead className="bg-[#d9ead3] text-[#14532d]">
+                    <tr>{["Term", "Start date", "End date", "Class days", "Holiday note", "Status"].map((head) => <th key={head} className="border border-emerald-900/20 px-2 py-1">{head}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {dashboard.terms.map((term) => (
+                      <tr key={term.label}>
+                        <td className="border border-emerald-900/20 px-2 py-1 font-semibold">{term.label}</td>
+                        <td className="border border-emerald-900/20 px-2 py-1">{term.startDate?.toLocaleDateString("en-US") ?? "Not set"}</td>
+                        <td className="border border-emerald-900/20 px-2 py-1">{term.endDate?.toLocaleDateString("en-US") ?? "Not set"}</td>
+                        <td className="border border-emerald-900/20 px-2 py-1">{term.classDays}</td>
+                        <td className="border border-emerald-900/20 px-2 py-1">{term.holidayNote}</td>
+                        <td className="border border-emerald-900/20 px-2 py-1">{term.status}</td>
+                      </tr>
+                    ))}
+                    {!dashboard.terms.length ? <tr><td colSpan={6} className="border border-emerald-900/20 px-2 py-2 text-slate-600">No academic terms encoded yet.</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="border border-emerald-900/20 bg-[#f8fbf1]">
+              <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">This Month Quick Insights</div>
+              <ul className="space-y-1 p-2 text-[12px]">
+                <li>Completed this month: <b>{dashboard.summary.completedSessions}</b></li>
+                <li>Sessions remaining: <b>{remainingSessions}</b></li>
+                <li>Most active grade: <b>{dashboard.summary.mostActiveGrade}</b></li>
+                <li>Pending/cancelled: <b>{remainingSessions}/{dashboard.summary.cancelledSessions}</b></li>
+                <li>Project activity: <b>{projectActivity}</b></li>
+                <li>Teacher participation: <b>{dashboard.summary.activeTeachers}</b></li>
+              </ul>
+            </div>
+          </section>
+
+          <section className="border border-emerald-900/20">
+            <div className="flex flex-wrap items-center justify-between gap-2 bg-[#14532d] px-2 py-1 text-white">
+              <div className="flex items-center gap-2 text-[12px] font-bold"><CalendarDays className="size-3" /> Monthly Calendar View</div>
+              <div className="flex flex-wrap gap-2 text-[10px]">
+                <span className="border border-emerald-500 bg-emerald-100 px-1 text-emerald-900">Completed</span>
+                <span className="border border-amber-500 bg-amber-100 px-1 text-amber-950">Scheduled</span>
+                <span className="border border-red-500 bg-red-100 px-1 text-red-900">Cancelled</span>
+                <span className="border border-slate-300 bg-white px-1 text-slate-700">No session</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-7 border-l border-t border-emerald-900/20 bg-white">
+              {weekLabels.map((label) => <div key={label} className="border-b border-r border-emerald-900/20 bg-[#d9ead3] px-1 py-1 text-center text-[11px] font-bold text-[#14532d]">{label}</div>)}
+              {monthCells.map((date) => {
+                const sessions = dashboard.sessionsByDay[dayKey(date)] ?? [];
+                const label = sessions[0] ? statusLabel(sessions[0].status, sessions[0].completion, sessions[0].remarks) : "No session";
+                const title = sessions.map((session) => `${session.gradeLevel} ${session.section} | ${session.subject} | ${session.teacher} | ${session.activity} | ${session.topic} | ${session.delivery} | ${session.completion} | ${session.remarks}`).join("\n");
                 return (
-                  <TableRow key={school.id}>
-                    <TableCell className="font-medium">{school.name}</TableCell>
-                    <TableCell>{school.schoolYear}</TableCell>
-                    <TableCell>{total ? `${completed}/${total}` : "No sessions"}</TableCell>
-                    <TableCell>
-                      <div className="flex min-w-36 items-center gap-3">
-                        <div className="h-2 flex-1 rounded-full bg-muted">
-                          <div className="h-2 rounded-full bg-ace-blue" style={{ width: `${progress}%` }} />
-                        </div>
-                        <span className="w-10 text-right text-xs font-semibold text-muted-foreground">{progress}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={school.status} />
-                    </TableCell>
-                  </TableRow>
+                  <div key={date.toISOString()} title={title} className={`min-h-20 border-b border-r border-emerald-900/20 p-1 ${date.getMonth() === visibleMonth ? "bg-[#fffdf3]" : "bg-slate-50 text-slate-400"}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold">{date.getDate()}</span>
+                      {sessions.length ? <span className={`border px-1 text-[10px] ${statusClass(label)}`}>{sessions.length}</span> : null}
+                    </div>
+                    <div className="mt-1 space-y-0.5">
+                      {sessions.slice(0, 3).map((session) => {
+                        const sessionLabel = statusLabel(session.status, session.completion, session.remarks);
+                        return <div key={session.id} className={`truncate border px-1 text-[10px] ${statusClass(sessionLabel)}`}>{session.gradeLevel} {session.section}</div>;
+                      })}
+                      {sessions.length > 3 ? <div className="text-[10px] text-emerald-900">+{sessions.length - 3} more</div> : null}
+                    </div>
+                  </div>
                 );
               })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <div className="grid gap-6">
-        <Card className="adto-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Pending Reports</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end justify-between">
-              <div>
-                <p className="text-4xl font-bold tracking-tight">{pendingReports}</p>
-                <p className="mt-2 text-sm text-muted-foreground">Reports waiting for submission or review.</p>
-              </div>
-              <span className="flex size-12 items-center justify-center rounded-2xl bg-ace-orange/10 text-ace-orange">
-                <FileText className="size-6" />
-              </span>
             </div>
-          </CardContent>
-        </Card>
-        <Card className="adto-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Upcoming Sessions</CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-start gap-3 text-sm text-muted-foreground">
-            <CalendarDays className="mt-0.5 size-5 text-ace-blue" />
-            Session scheduling visibility will appear here as the ACE session workflow expands.
-          </CardContent>
-        </Card>
+          </section>
+        </main>
+
+        <aside className="border border-emerald-900/20 bg-[#f8fbf1]">
+          <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">Session Detail Preview</div>
+          <div className="max-h-[520px] space-y-1 overflow-y-auto p-2">
+            {dashboard.sessions.slice(0, 18).map((session) => (
+              <div key={session.id} className="border border-emerald-900/20 bg-white p-2 text-[11px]">
+                <div className="flex justify-between gap-2">
+                  <b>{session.date.toLocaleDateString("en-US", { month: "short", day: "numeric" })} {session.period}</b>
+                  <span className={`border px-1 ${statusClass(statusLabel(session.status, session.completion, session.remarks))}`}>{statusLabel(session.status, session.completion, session.remarks)}</span>
+                </div>
+                <p>{session.gradeLevel} {session.section} - {session.subject}</p>
+                <p className="text-slate-600">{session.teacher} | {session.activity}</p>
+                <p className="truncate text-slate-600">{session.topic}</p>
+              </div>
+            ))}
+            {!dashboard.sessions.length ? <p className="p-2 text-slate-600">No sessions match the selected filters.</p> : null}
+          </div>
+        </aside>
       </div>
-      </div>
+
+      <section className="border border-emerald-900/20">
+        <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">Session Table</div>
+        <div className="max-h-[460px] overflow-auto">
+          <table className="w-full min-w-[980px] border-collapse bg-white text-left text-[11px]">
+            <thead className="sticky top-0 z-10 bg-[#d9ead3] text-[#14532d]">
+              <tr>
+                {["Date", "Period", "Grade & Section", "Subject", "Teacher", "Activity", "Topic", "Delivery", "Completion", "Remarks"].map((head) => (
+                  <th key={head} className="border border-emerald-900/20 px-2 py-1">{head}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dashboard.sessions.map((session) => {
+                const label = statusLabel(session.status, session.completion, session.remarks);
+                return (
+                  <tr key={session.id} className="odd:bg-[#fffdf3]">
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.date.toLocaleDateString("en-US")}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.period || "-"}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.gradeLevel} {session.section}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.subject || "-"}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.teacher || "-"}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.activity || "-"}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.topic}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.delivery || "-"}</td>
+                    <td className="border border-emerald-900/20 px-2 py-1"><span className={`border px-1 ${statusClass(label)}`}>{label}</span></td>
+                    <td className="border border-emerald-900/20 px-2 py-1">{session.remarks || "-"}</td>
+                  </tr>
+                );
+              })}
+              {!dashboard.sessions.length ? <tr><td colSpan={10} className="border border-emerald-900/20 px-2 py-3 text-slate-600">No session rows match the filters.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

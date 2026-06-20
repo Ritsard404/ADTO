@@ -1,5 +1,4 @@
 import type { LucideIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export function MetricCard({
@@ -23,17 +22,15 @@ export function MetricCard({
   };
 
   return (
-    <Card className="adto-card overflow-hidden">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-semibold text-muted-foreground">{title}</CardTitle>
-        <span className={cn("flex size-10 items-center justify-center rounded-2xl", accentClasses[accent])}>
+    <div className="grid grid-cols-[1fr_auto] gap-2 border bg-card px-2 py-1.5">
+      <div className="min-w-0">
+        <p className="truncate text-[11px] font-semibold text-muted-foreground">{title}</p>
+        <div className="text-xl font-bold leading-none tracking-tight">{value}</div>
+        <p className="truncate text-[11px] text-muted-foreground">{description}</p>
+      </div>
+      <span className={cn("flex size-7 items-center justify-center rounded-sm", accentClasses[accent])}>
           <Icon className="size-5" />
-        </span>
-      </CardHeader>
-      <CardContent>
-        <div className="text-[32px] font-bold leading-none tracking-tight">{value}</div>
-        <p className="mt-2 text-sm leading-5 text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
+      </span>
+    </div>
   );
 }

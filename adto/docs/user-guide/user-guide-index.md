@@ -3,6 +3,7 @@
 ## Getting Around
 
 * [How to navigate the ADTO workspace](./how-to-navigate-adto.md)
+* [How to use the compact ACE dashboard](./how-to-use-compact-ace-dashboard.md)
 * [How to use the Facilitator Workspace](./how-to-use-facilitator-workspace.md)
 * [How to use facilitator workbook tools](./how-to-use-facilitator-workbook-tools.md)
 * [How to use the school admin portal](./how-to-use-school-admin-portal.md)

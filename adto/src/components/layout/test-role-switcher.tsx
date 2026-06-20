@@ -1,6 +1,5 @@
 import type { UserRole } from "@/generated/prisma/enums";
 import { switchTestRole } from "@/features/auth/actions/auth";
-import { isAuthBypassEnabled } from "@/lib/test-auth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -9,8 +8,8 @@ const testRoles = [
   { label: "Facilitator", value: "FACILITATOR" },
 ] satisfies { label: string; value: UserRole }[];
 
-export function TestRoleSwitcher({ activeRole }: { activeRole: UserRole }) {
-  if (!isAuthBypassEnabled()) {
+export function TestRoleSwitcher({ activeRole, enabled }: { activeRole: UserRole; enabled: boolean }) {
+  if (!enabled) {
     return null;
   }
 

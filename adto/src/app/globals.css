@@ -162,15 +162,15 @@
 
 @layer components {
   .adto-card {
-    @apply rounded-lg border bg-card shadow-[0_1px_3px_rgba(15,23,42,0.05)];
+    @apply rounded-sm border bg-card shadow-none;
   }
 
   .adto-compact-card {
-    @apply rounded-lg border bg-card p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)];
+    @apply rounded-sm border bg-card p-2 shadow-none;
   }
 
   .adto-sticky-save {
-    @apply sticky bottom-16 z-20 rounded-lg border bg-card/95 p-3 shadow-lg backdrop-blur lg:bottom-3;
+    @apply sticky bottom-16 z-20 rounded-sm border bg-card/95 p-2 shadow-none backdrop-blur lg:bottom-2;
   }
 
   .adto-focus {
