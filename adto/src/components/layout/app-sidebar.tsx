@@ -12,7 +12,7 @@ export function AppSidebar({ profile, collapsed, onToggle }: { profile: Profile;
   const pathname = usePathname();
 
   return (
-    <aside className={cn("fixed inset-y-0 left-0 hidden shrink-0 border-r bg-sidebar px-2 py-2 lg:block", collapsed ? "w-[72px]" : "w-[240px]")}>
+    <aside className={cn("fixed inset-y-0 left-0 hidden shrink-0 border-r bg-sidebar px-2 py-2 lg:block", collapsed ? "w-18" : "w-60")}>
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between gap-2">
           <ADTOBrandLockup compact={collapsed} />

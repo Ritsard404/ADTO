@@ -71,7 +71,7 @@ export const navigationGroups: NavGroup[] = [
     items: [
       { title: "Account", href: "/account", icon: KeyRound, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Settings", href: "/settings", icon: Settings, roles: ["ADMIN"] },
-      { title: "Help Center", href: "/account", icon: HelpCircle, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+      { title: "Help Center", href: "/help", icon: HelpCircle, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
     ],
   },
 ];
