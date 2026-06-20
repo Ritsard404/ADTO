@@ -122,6 +122,7 @@ model School {
   projects       ACEProject[]
   inventoryItems InventoryItem[]
   reports        Report[]
+  scheduleTemplates ScheduleTemplate[]
   reportHistories ReportHistory[]
   schoolYears    SchoolYear[]
   sections       SchoolSection[]
@@ -129,6 +130,34 @@ model School {
   remarks        SchoolRemark[]
   reportNarratives ReportNarrative[]
   mediaUploads   MediaUpload[]
+}
+
+model ScheduleTemplate {
+  id            String   @id @default(uuid())
+  schoolId      String
+  name          String
+  dayOfWeek     Int
+  startTime     String
+  durationHours Decimal  @default(1)
+  gradeLevel    String
+  section       String
+  subject       String?
+  teacher       String?
+  facilitatorId String?
+  delivery      String?
+  activity      String?
+  defaultTopic  String?
+  defaultRemarks String?
+  isActive      Boolean  @default(true)
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@index([createdById])
+  @@unique([schoolId, name])
 }
 
 model SchoolYear {

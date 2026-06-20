@@ -1,8 +1,13 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { assertWritableDataMode } from "@/lib/runtime-mode";
+import { assertWritableDataMode, isMockDataMode } from "@/lib/runtime-mode";
 import { assertCanAccessSchool, type ActiveProfile } from "@/features/facilitator/services/adms-workflow.service";
-import type { ScheduleBulkRowInput, ScheduleDuplicateInput } from "@/features/sessions/schemas/schedule-workflow";
+import type {
+  ScheduleBulkRowInput,
+  ScheduleDuplicateInput,
+  ScheduleTemplateInput,
+  ScheduleTemplatePreviewInput,
+} from "@/features/sessions/schemas/schedule-workflow";
 
 export type SchedulePreviewStatus = "ready" | "duplicate" | "conflict" | "missing";
 
@@ -24,6 +29,24 @@ export type SchedulePreviewRow = {
   sessionNumber: number;
   status: SchedulePreviewStatus;
   warnings: string[];
+};
+
+export type ScheduleTemplateOption = {
+  id: string;
+  schoolId: string;
+  name: string;
+  dayOfWeek: number;
+  startTime: string;
+  durationHours: number;
+  gradeLevel: string;
+  section: string;
+  subject: string;
+  teacher: string;
+  facilitatorId: string;
+  delivery: string;
+  activity: string;
+  defaultTopic: string;
+  defaultRemarks: string;
 };
 
 type ExistingSession = {
@@ -54,6 +77,14 @@ function addDays(value: Date, days: number) {
   const next = new Date(value);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
+}
+
+function eachDateInRange(start: Date, end: Date) {
+  const dates: Date[] = [];
+  for (let cursor = new Date(start); cursor <= end; cursor = addDays(cursor, 1)) {
+    dates.push(new Date(cursor));
+  }
+  return dates;
 }
 
 function minutesFromTime(value: string | null | undefined) {
@@ -92,6 +123,42 @@ async function assertScheduleAccess(profile: ActiveProfile, schoolId: string) {
     throw new Error("School admins can view schedules but cannot modify ACE session logs.");
   }
   await assertCanAccessSchool(profile, schoolId);
+}
+
+function mapTemplate(template: {
+  id: string;
+  schoolId: string;
+  name: string;
+  dayOfWeek: number;
+  startTime: string;
+  durationHours: Prisma.Decimal | number;
+  gradeLevel: string;
+  section: string;
+  subject: string | null;
+  teacher: string | null;
+  facilitatorId: string | null;
+  delivery: string | null;
+  activity: string | null;
+  defaultTopic: string | null;
+  defaultRemarks: string | null;
+}): ScheduleTemplateOption {
+  return {
+    id: template.id,
+    schoolId: template.schoolId,
+    name: template.name,
+    dayOfWeek: template.dayOfWeek,
+    startTime: template.startTime,
+    durationHours: Number(template.durationHours),
+    gradeLevel: template.gradeLevel,
+    section: template.section,
+    subject: template.subject ?? "",
+    teacher: template.teacher ?? "",
+    facilitatorId: template.facilitatorId ?? "",
+    delivery: template.delivery ?? "",
+    activity: template.activity ?? "",
+    defaultTopic: template.defaultTopic ?? "",
+    defaultRemarks: template.defaultRemarks ?? "",
+  };
 }
 
 function normalizePreviewRow(row: SchedulePreviewRow, existing: ExistingSession[]) {
@@ -225,6 +292,117 @@ export async function buildBulkSchedulePreview(profile: ActiveProfile, rows: Sch
         title: row.title || row.activity || "ACE Session",
         delivery: row.delivery || "",
         remarks: row.remarks || "",
+        sessionNumber: index + 1,
+        status: "ready",
+        warnings: [],
+      },
+      existing,
+    ),
+  );
+}
+
+export async function getScheduleTemplates(profile: ActiveProfile, schoolIds: string[] | null): Promise<ScheduleTemplateOption[]> {
+  if (profile.role === "SCHOOL_ADMIN" || isMockDataMode()) {
+    return [];
+  }
+
+  const templates = await prisma.scheduleTemplate.findMany({
+    where: {
+      isActive: true,
+      schoolId: schoolIds ? { in: schoolIds } : undefined,
+    },
+    orderBy: [{ name: "asc" }],
+  });
+
+  return templates.map(mapTemplate);
+}
+
+export async function createScheduleTemplate(profile: ActiveProfile, input: ScheduleTemplateInput): Promise<ScheduleTemplateOption> {
+  assertWritableDataMode();
+  await assertScheduleAccess(profile, input.schoolId);
+
+  const template = await prisma.scheduleTemplate.upsert({
+    where: { schoolId_name: { schoolId: input.schoolId, name: input.name } },
+    update: {
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      durationHours: input.durationHours,
+      gradeLevel: input.gradeLevel,
+      section: input.section,
+      subject: input.subject || null,
+      teacher: input.teacher || null,
+      facilitatorId: input.facilitatorId || null,
+      delivery: input.delivery || null,
+      activity: input.activity || null,
+      defaultTopic: input.defaultTopic || null,
+      defaultRemarks: input.defaultRemarks || null,
+      isActive: true,
+    },
+    create: {
+      schoolId: input.schoolId,
+      name: input.name,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      durationHours: input.durationHours,
+      gradeLevel: input.gradeLevel,
+      section: input.section,
+      subject: input.subject || null,
+      teacher: input.teacher || null,
+      facilitatorId: input.facilitatorId || null,
+      delivery: input.delivery || null,
+      activity: input.activity || null,
+      defaultTopic: input.defaultTopic || null,
+      defaultRemarks: input.defaultRemarks || null,
+      createdById: profile.id,
+    },
+  });
+
+  return mapTemplate(template);
+}
+
+export async function buildTemplateSchedulePreview(profile: ActiveProfile, input: ScheduleTemplatePreviewInput) {
+  const template = await prisma.scheduleTemplate.findUnique({ where: { id: input.templateId } });
+  if (!template || !template.isActive) {
+    throw new Error("Resolve schedule template before generating sessions.");
+  }
+
+  await assertScheduleAccess(profile, template.schoolId);
+  if (!template.facilitatorId && profile.role === "ADMIN") {
+    throw new Error("Resolve the template facilitator before generating sessions.");
+  }
+
+  const start = parseDate(input.startDate);
+  const end = parseDate(input.endDate);
+  if (end < start) {
+    throw new Error("Resolve the date range before generating sessions.");
+  }
+
+  const excluded = new Set(
+    input.excludedDates
+      ? input.excludedDates.split(/[\s,]+/).map((date) => date.trim()).filter(Boolean)
+      : [],
+  );
+  const dates = eachDateInRange(start, end).filter((date) => date.getUTCDay() === template.dayOfWeek && !excluded.has(dateOnly(date)));
+  const existing = await prisma.aCESession.findMany({
+    where: { schoolId: template.schoolId, scheduledDate: { gte: start, lte: end } },
+  });
+
+  return dates.map((date, index) =>
+    normalizePreviewRow(
+      {
+        schoolId: template.schoolId,
+        facilitatorId: template.facilitatorId || profile.id,
+        scheduledDate: dateOnly(date),
+        startTime: template.startTime,
+        durationHours: Number(template.durationHours),
+        gradeLevel: template.gradeLevel,
+        section: template.section,
+        subject: template.subject ?? "",
+        teacher: template.teacher ?? "",
+        activity: template.activity ?? "Coding Session",
+        title: template.defaultTopic ?? template.activity ?? "ACE Session",
+        delivery: template.delivery ?? "",
+        remarks: template.defaultRemarks ?? "",
         sessionNumber: index + 1,
         status: "ready",
         warnings: [],

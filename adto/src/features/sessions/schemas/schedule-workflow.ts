@@ -36,5 +36,32 @@ export const scheduleBulkSaveSchema = z.object({
   allowConflicts: z.enum(["true", "false"]).default("false"),
 });
 
+export const scheduleTemplateSchema = z.object({
+  schoolId: z.string().uuid(),
+  name: z.string().trim().min(1).max(120),
+  dayOfWeek: z.coerce.number().int().min(0).max(6),
+  startTime: z.string().trim().min(1).max(20),
+  durationHours: z.coerce.number().min(0.25).max(12).default(1),
+  gradeLevel: z.string().trim().min(1).max(80),
+  section: z.string().trim().min(1).max(120),
+  subject: optionalText(120),
+  teacher: optionalText(160),
+  facilitatorId: optionalText(80),
+  delivery: optionalText(120),
+  activity: optionalText(120),
+  defaultTopic: optionalText(160),
+  defaultRemarks: optionalText(1000),
+});
+
+export const scheduleTemplatePreviewSchema = z.object({
+  templateId: z.string().uuid(),
+  startDate: z.string().trim().min(1),
+  endDate: z.string().trim().min(1),
+  excludedDates: optionalText(1000),
+  allowConflicts: z.enum(["true", "false"]).default("false"),
+});
+
 export type ScheduleDuplicateInput = z.infer<typeof scheduleDuplicateSchema>;
 export type ScheduleBulkRowInput = z.infer<typeof scheduleBulkRowSchema>;
+export type ScheduleTemplateInput = z.infer<typeof scheduleTemplateSchema>;
+export type ScheduleTemplatePreviewInput = z.infer<typeof scheduleTemplatePreviewSchema>;

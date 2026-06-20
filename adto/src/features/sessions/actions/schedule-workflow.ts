@@ -2,8 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { requireActiveProfile } from "@/lib/auth";
-import { scheduleBulkRowSchema, scheduleBulkSaveSchema, scheduleDuplicateSchema } from "@/features/sessions/schemas/schedule-workflow";
-import { buildBulkSchedulePreview, buildDuplicateSchedulePreview, saveScheduleRows, type SchedulePreviewRow } from "@/features/sessions/services/schedule-workflow.service";
+import {
+  scheduleBulkRowSchema,
+  scheduleBulkSaveSchema,
+  scheduleDuplicateSchema,
+  scheduleTemplatePreviewSchema,
+  scheduleTemplateSchema,
+} from "@/features/sessions/schemas/schedule-workflow";
+import {
+  buildBulkSchedulePreview,
+  buildDuplicateSchedulePreview,
+  buildTemplateSchedulePreview,
+  createScheduleTemplate,
+  saveScheduleRows,
+  type SchedulePreviewRow,
+} from "@/features/sessions/services/schedule-workflow.service";
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
@@ -51,5 +64,28 @@ export async function saveBulkScheduleRowsAction(formData: FormData) {
     return { success: true, ...result } as const;
   } catch (error) {
     return { success: false, error: safeError(error) } as const;
+  }
+}
+
+export async function createScheduleTemplateAction(formData: FormData) {
+  try {
+    const profile = await requireActiveProfile();
+    const input = scheduleTemplateSchema.parse(formDataToObject(formData));
+    const template = await createScheduleTemplate(profile, input);
+    revalidatePath("/sessions");
+    return { success: true, template } as const;
+  } catch (error) {
+    return { success: false, error: safeError(error) } as const;
+  }
+}
+
+export async function previewScheduleTemplateAction(formData: FormData) {
+  try {
+    const profile = await requireActiveProfile();
+    const input = scheduleTemplatePreviewSchema.parse(formDataToObject(formData));
+    const rows = await buildTemplateSchedulePreview(profile, input);
+    return { success: true, rows } as const;
+  } catch (error) {
+    return { success: false, error: safeError(error), rows: [] } as const;
   }
 }

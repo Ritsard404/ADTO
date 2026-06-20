@@ -9,6 +9,7 @@ import {
   HelpCircle,
   Home,
   Images,
+  KeyRound,
   School,
   Settings,
   Users,
@@ -68,8 +69,9 @@ export const navigationGroups: NavGroup[] = [
   {
     title: "System",
     items: [
+      { title: "Account", href: "/account", icon: KeyRound, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Settings", href: "/settings", icon: Settings, roles: ["ADMIN"] },
-      { title: "Help Center", href: "/settings", icon: HelpCircle, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+      { title: "Help Center", href: "/account", icon: HelpCircle, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
     ],
   },
 ];

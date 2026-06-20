@@ -9,7 +9,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createActivityCategoryAction, upsertAdminSessionAction } from "@/features/admin/actions/admin";
 import { createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/features/facilitator/actions/adms-workflow";
-import { previewBulkSchedulePasteAction, previewDuplicateScheduleAction, saveBulkScheduleRowsAction } from "@/features/sessions/actions/schedule-workflow";
+import {
+  createScheduleTemplateAction,
+  previewBulkSchedulePasteAction,
+  previewDuplicateScheduleAction,
+  previewScheduleTemplateAction,
+  saveBulkScheduleRowsAction,
+} from "@/features/sessions/actions/schedule-workflow";
 import { ScheduleWorkbench } from "@/features/sessions/components/schedule-workbench";
 import { requireActiveProfile } from "@/lib/auth";
 import { withMockRelations } from "@/lib/mock-adms-data";
@@ -17,6 +23,7 @@ import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
 import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
 import { getSessionsReadModel } from "@/features/sessions/services/sessions-read.service";
+import { getScheduleTemplates } from "@/features/sessions/services/schedule-workflow.service";
 
 function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
@@ -30,6 +37,7 @@ export default async function SessionsPage() {
   const profile = await requireActiveProfile();
   const schoolIds = await getAccessibleSchoolIds(profile);
   const { sessions, schools, projects } = await getSessionsReadModel(schoolIds);
+  const scheduleTemplates = await getScheduleTemplates(profile, schoolIds);
   const mock = isMockDataMode() ? withMockRelations() : null;
   const facilitators = mock
     ? mock.facilitators
@@ -245,9 +253,12 @@ export default async function SessionsPage() {
             <ScheduleWorkbench
               schools={schools.map((school) => ({ id: school.id, name: school.name }))}
               facilitators={facilitators.map((facilitator) => ({ id: facilitator.id, fullName: facilitator.fullName }))}
+              templates={scheduleTemplates}
               previewDuplicateAction={previewDuplicateScheduleAction}
               previewBulkAction={previewBulkSchedulePasteAction}
+              previewTemplateAction={previewScheduleTemplateAction}
               saveBulkAction={saveBulkScheduleRowsAction}
+              createTemplateAction={createScheduleTemplateAction}
             />
           </CardContent>
         </Card>

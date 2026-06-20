@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import type { SchedulePreviewRow } from "@/features/sessions/services/schedule-workflow.service";
+import type { SchedulePreviewRow, ScheduleTemplateOption } from "@/features/sessions/services/schedule-workflow.service";
 
 type SchoolOption = {
   id: string;
@@ -42,6 +42,10 @@ type ActionResult =
 
 type SaveResult =
   | { success: true; created: number; skipped: number }
+  | { success: false; error: string };
+
+type TemplateResult =
+  | { success: true; template: ScheduleTemplateOption }
   | { success: false; error: string };
 
 const headerMap: Record<string, keyof PasteRow | "day" | "ignore"> = {
@@ -142,21 +146,28 @@ function statusVariant(status: SchedulePreviewRow["status"]) {
 export function ScheduleWorkbench({
   schools,
   facilitators,
+  templates,
   previewDuplicateAction,
   previewBulkAction,
+  previewTemplateAction,
   saveBulkAction,
+  createTemplateAction,
 }: {
   schools: SchoolOption[];
   facilitators: FacilitatorOption[];
+  templates: ScheduleTemplateOption[];
   previewDuplicateAction: (formData: FormData) => Promise<ActionResult>;
   previewBulkAction: (formData: FormData) => Promise<ActionResult>;
+  previewTemplateAction: (formData: FormData) => Promise<ActionResult>;
   saveBulkAction: (formData: FormData) => Promise<SaveResult>;
+  createTemplateAction: (formData: FormData) => Promise<TemplateResult>;
 }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState("");
   const [previewRows, setPreviewRows] = useState<SchedulePreviewRow[]>([]);
   const [pasteValue, setPasteValue] = useState("");
   const [bulkRows, setBulkRows] = useState<PasteRow[]>([]);
+  const [templateOptions, setTemplateOptions] = useState<ScheduleTemplateOption[]>([...templates]);
   const [duplicateForm, setDuplicateForm] = useState({
     schoolId: schools[0]?.id ?? "",
     sourceStartDate: today(),
@@ -168,6 +179,28 @@ export function ScheduleWorkbench({
     sourceDay: "",
     topicMode: "copy",
     allowConflicts: "false",
+  });
+  const [templateForm, setTemplateForm] = useState({
+    schoolId: schools[0]?.id ?? "",
+    name: "Weekly ACE Session",
+    dayOfWeek: "2",
+    startTime: "08:00",
+    durationHours: "1",
+    gradeLevel: "Grade 7",
+    section: "",
+    subject: "",
+    teacher: "",
+    facilitatorId: "",
+    delivery: "Classroom",
+    activity: "Coding Session",
+    defaultTopic: "ACE Session",
+    defaultRemarks: "",
+  });
+  const [templatePreviewForm, setTemplatePreviewForm] = useState({
+    templateId: templates[0]?.id ?? "",
+    startDate: today(),
+    endDate: today(),
+    excludedDates: "",
   });
 
   const readyCount = useMemo(() => previewRows.filter((row) => row.status === "ready").length, [previewRows]);
@@ -232,6 +265,37 @@ export function ScheduleWorkbench({
         setBulkRows([]);
         setPasteValue("");
       }
+    });
+  }
+
+  function createTemplate() {
+    const formData = new FormData();
+    Object.entries(templateForm).forEach(([key, value]) => formData.set(key, value));
+    startTransition(async () => {
+      setMessage("");
+      const result = await createTemplateAction(formData);
+      if (!result.success) {
+        setMessage(result.error);
+        return;
+      }
+      setTemplateOptions((current) => {
+        const withoutExisting = current.filter((template) => template.id !== result.template.id);
+        return [...withoutExisting, result.template].sort((a, b) => a.name.localeCompare(b.name));
+      });
+      setTemplatePreviewForm((current) => ({ ...current, templateId: result.template.id }));
+      setMessage(`Template "${result.template.name}" is ready for generation.`);
+    });
+  }
+
+  function previewTemplate() {
+    const formData = new FormData();
+    Object.entries(templatePreviewForm).forEach(([key, value]) => formData.set(key, value));
+    formData.set("allowConflicts", duplicateForm.allowConflicts);
+    startTransition(async () => {
+      setMessage("");
+      const result = await previewTemplateAction(formData);
+      setPreviewRows([...result.rows]);
+      setMessage(result.success ? `${result.rows.length} template rows previewed.` : result.error);
     });
   }
 
@@ -322,6 +386,100 @@ export function ScheduleWorkbench({
           <p className="text-xs text-muted-foreground">{bulkRows.length ? `${bulkRows.length} parsed rows are staged for preview.` : "Paste rows from Excel to begin."}</p>
         </section>
       </div>
+
+      <section className="space-y-3 rounded-lg border p-3">
+        <div>
+          <p className="text-sm font-semibold">Recurring Schedule Template</p>
+          <p className="text-xs text-muted-foreground">Save a fixed weekly slot, then generate matching sessions for a date range with preview and conflict checks.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Label>
+            School
+            <select value={templateForm.schoolId} onChange={(event) => setTemplateForm((current) => ({ ...current, schoolId: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+            </select>
+          </Label>
+          <Label>
+            Template name
+            <Input value={templateForm.name} onChange={(event) => setTemplateForm((current) => ({ ...current, name: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Weekly day
+            <select value={templateForm.dayOfWeek} onChange={(event) => setTemplateForm((current) => ({ ...current, dayOfWeek: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => <option key={day} value={index}>{day}</option>)}
+            </select>
+          </Label>
+          <Label>
+            Start / duration
+            <div className="mt-1 grid grid-cols-[1fr_80px] gap-2">
+              <Input type="time" value={templateForm.startTime} onChange={(event) => setTemplateForm((current) => ({ ...current, startTime: event.target.value }))} />
+              <Input type="number" min="0.25" step="0.25" value={templateForm.durationHours} onChange={(event) => setTemplateForm((current) => ({ ...current, durationHours: event.target.value }))} />
+            </div>
+          </Label>
+          <Label>
+            Grade
+            <Input value={templateForm.gradeLevel} onChange={(event) => setTemplateForm((current) => ({ ...current, gradeLevel: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Section
+            <Input value={templateForm.section} onChange={(event) => setTemplateForm((current) => ({ ...current, section: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Subject
+            <Input value={templateForm.subject} onChange={(event) => setTemplateForm((current) => ({ ...current, subject: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Teacher
+            <Input value={templateForm.teacher} onChange={(event) => setTemplateForm((current) => ({ ...current, teacher: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Facilitator
+            <select value={templateForm.facilitatorId} onChange={(event) => setTemplateForm((current) => ({ ...current, facilitatorId: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">Use active facilitator</option>
+              {facilitators.map((facilitator) => <option key={facilitator.id} value={facilitator.id}>{facilitator.fullName}</option>)}
+            </select>
+          </Label>
+          <Label>
+            Venue / modality
+            <Input value={templateForm.delivery} onChange={(event) => setTemplateForm((current) => ({ ...current, delivery: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Activity
+            <Input value={templateForm.activity} onChange={(event) => setTemplateForm((current) => ({ ...current, activity: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Topic
+            <Input value={templateForm.defaultTopic} onChange={(event) => setTemplateForm((current) => ({ ...current, defaultTopic: event.target.value }))} className="mt-1" />
+          </Label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" onClick={createTemplate} disabled={isPending}>Save template</Button>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_160px_minmax(0,1fr)_auto]">
+          <Label>
+            Template
+            <select value={templatePreviewForm.templateId} onChange={(event) => setTemplatePreviewForm((current) => ({ ...current, templateId: event.target.value }))} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">Select a template</option>
+              {templateOptions.map((template) => <option key={template.id} value={template.id}>{template.name}</option>)}
+            </select>
+          </Label>
+          <Label>
+            Start date
+            <Input type="date" value={templatePreviewForm.startDate} onChange={(event) => setTemplatePreviewForm((current) => ({ ...current, startDate: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            End date
+            <Input type="date" value={templatePreviewForm.endDate} onChange={(event) => setTemplatePreviewForm((current) => ({ ...current, endDate: event.target.value }))} className="mt-1" />
+          </Label>
+          <Label>
+            Excluded dates
+            <Input value={templatePreviewForm.excludedDates} onChange={(event) => setTemplatePreviewForm((current) => ({ ...current, excludedDates: event.target.value }))} className="mt-1" placeholder="2026-07-01, 2026-07-08" />
+          </Label>
+          <div className="flex items-end">
+            <Button type="button" onClick={previewTemplate} disabled={isPending || !templatePreviewForm.templateId}>Preview template</Button>
+          </div>
+        </div>
+      </section>
 
       {message ? <p className="rounded-md bg-muted p-3 text-sm text-muted-foreground">{message}</p> : null}
 

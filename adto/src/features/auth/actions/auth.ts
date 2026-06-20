@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { loginSchema } from "@/features/auth/schemas/auth";
+import { changePasswordSchema, loginSchema } from "@/features/auth/schemas/auth";
+import { requireActiveProfile } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { isAuthBypassEnabled, isTestRole, TEST_AUTH_COOKIE } from "@/lib/test-auth";
 
@@ -57,4 +58,34 @@ export async function switchTestRole(formData: FormData) {
   });
 
   redirect("/dashboard");
+}
+
+export async function changeOwnPasswordAction(formData: FormData) {
+  if (isAuthBypassEnabled()) {
+    return { success: false, error: "Password changes are disabled while local auth bypass is active." } as const;
+  }
+
+  await requireActiveProfile();
+  const parsed = changePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Review the password fields and try again." } as const;
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.newPassword,
+    current_password: parsed.data.currentPassword,
+  });
+
+  if (error) {
+    console.error(error);
+    return { success: false, error: "Password could not be updated. Check the current password and try again." } as const;
+  }
+
+  return { success: true } as const;
 }

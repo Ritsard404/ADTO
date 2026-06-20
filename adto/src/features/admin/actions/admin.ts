@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertWritableDataMode } from "@/lib/runtime-mode";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   assignmentEndSchema,
   assignmentUpsertSchema,
@@ -16,6 +17,7 @@ import {
   teacherAssignmentCreateSchema,
   teacherCreateSchema,
   userCreateSchema,
+  userPasswordUpdateSchema,
   userUpdateSchema,
 } from "@/features/admin/schemas/admin";
 
@@ -272,4 +274,47 @@ export async function updateUserAction(formData: FormData) {
   revalidatePath("/settings");
   revalidatePath("/facilitators");
   revalidatePath("/dashboard");
+}
+
+export async function updateUserPasswordAction(formData: FormData) {
+  assertWritableDataMode();
+  await requireRole(["ADMIN"]);
+  const parsed = userPasswordUpdateSchema.safeParse(formDataToObject(formData));
+
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? "Review the password fields and try again." } as const;
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: parsed.data.profileId },
+    select: { email: true },
+  });
+
+  if (!profile) {
+    return { success: false, error: "User account was not found." } as const;
+  }
+
+  try {
+    const supabase = createAdminClient();
+    const { data, error: listError } = await supabase.auth.admin.listUsers();
+    if (listError) {
+      throw listError;
+    }
+
+    const authUser = data.users.find((user) => user.email?.toLowerCase() === profile.email.toLowerCase());
+    if (!authUser) {
+      return { success: false, error: "This profile does not have a matching Supabase Auth user yet." } as const;
+    }
+
+    const { error } = await supabase.auth.admin.updateUserById(authUser.id, { password: parsed.data.password });
+    if (error) {
+      throw error;
+    }
+
+    revalidatePath("/settings");
+    return { success: true } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Password could not be updated. Check Supabase admin configuration and try again." } as const;
+  }
 }

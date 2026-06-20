@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createUserAction, updateUserAction } from "@/features/admin/actions/admin";
+import { createUserAction, updateUserAction, updateUserPasswordAction } from "@/features/admin/actions/admin";
 import { requireRole } from "@/lib/auth";
 import { mockProfiles } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
@@ -116,13 +116,14 @@ export default async function SettingsPage({
         <CardContent>
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Password</TableHead>
+                </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
@@ -164,6 +165,22 @@ export default async function SettingsPage({
                     <Button type="submit" form={`user-${user.id}`} size="sm">
                       Update
                     </Button>
+                  </TableCell>
+                  <TableCell>
+                    <form
+                      action={async (formData) => {
+                        "use server";
+                        await updateUserPasswordAction(formData);
+                      }}
+                      className="grid min-w-56 gap-2"
+                    >
+                      <input type="hidden" name="profileId" value={user.id} />
+                      <Input name="password" type="password" placeholder="New password" minLength={8} autoComplete="new-password" />
+                      <Input name="confirmPassword" type="password" placeholder="Confirm password" minLength={8} autoComplete="new-password" />
+                      <Button type="submit" size="sm" variant="outline">
+                        Set password
+                      </Button>
+                    </form>
                   </TableCell>
                 </TableRow>
               ))}
