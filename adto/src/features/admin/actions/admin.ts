@@ -13,6 +13,7 @@ import {
   schoolRemarkCreateSchema,
   schoolYearCreateSchema,
   sectionBulkCreateSchema,
+  schoolMembershipUpsertSchema,
   schoolUpdateSchema,
   teacherAssignmentCreateSchema,
   teacherCreateSchema,
@@ -30,6 +31,22 @@ export async function updateSchoolAction(formData: FormData) {
   await requireRole(["ADMIN"]);
   const input = schoolUpdateSchema.parse(formDataToObject(formData));
 
+  const duplicateChecks = [
+    ["schoolCode", input.schoolCode],
+    ["deployedFormId", input.deployedFormId],
+    ["sourceSchoolId", input.sourceSchoolId],
+  ] as const;
+  for (const [field, value] of duplicateChecks) {
+    if (!value) continue;
+    const duplicate = await prisma.school.findFirst({
+      where: { [field]: value, id: { not: input.schoolId } },
+      select: { name: true },
+    });
+    if (duplicate) {
+      throw new Error(`This ${field} is already used by ${duplicate.name}.`);
+    }
+  }
+
   await prisma.school.update({
     where: { id: input.schoolId },
     data: {
@@ -46,6 +63,20 @@ export async function updateSchoolAction(formData: FormData) {
       adoptionYear: input.adoptionYear || null,
       implementationYear: input.implementationYear || null,
       adoptionType: input.adoptionType || null,
+      deployedFormId: input.deployedFormId || null,
+      formNumber: input.formNumber || null,
+      sourceSchoolId: input.sourceSchoolId || null,
+      schoolLogoFileId: input.schoolLogoFileId || null,
+      team: input.team || null,
+      unitHead: input.unitHead || null,
+      supervisor: input.supervisor || null,
+      supervisorEmail: input.supervisorEmail || null,
+      edtechSpecialist: input.edtechSpecialist || null,
+      edtechEmail: input.edtechEmail || null,
+      gradeLevelAdoption: input.gradeLevelAdoption || null,
+      adoptionRemarks: input.adoptionRemarks || null,
+      addressLine1: input.addressLine1 || null,
+      addressLine2: input.addressLine2 || null,
       scheduleArrangement: input.scheduleArrangement || null,
       codingModality: input.codingModality || null,
       hardwareAllocation: input.hardwareAllocation || null,
@@ -317,4 +348,42 @@ export async function updateUserPasswordAction(formData: FormData) {
     console.error(error);
     return { success: false, error: "Password could not be updated. Check Supabase admin configuration and try again." } as const;
   }
+}
+
+export async function upsertSchoolMembershipAction(formData: FormData) {
+  assertWritableDataMode();
+  const profile = await requireRole(["ADMIN"]);
+  const input = schoolMembershipUpsertSchema.parse(formDataToObject(formData));
+
+  await prisma.schoolMembership.upsert({
+    where: { schoolId_profileId: { schoolId: input.schoolId, profileId: input.profileId } },
+    update: {
+      roleLabel: input.roleLabel,
+      status: input.status,
+      invitationStatus: input.invitationStatus || "ACCEPTED",
+      startDate: input.startDate ? new Date(input.startDate) : new Date(),
+      endDate: input.endDate ? new Date(input.endDate) : null,
+      notes: input.notes || null,
+      createdBy: profile.id,
+    },
+    create: {
+      schoolId: input.schoolId,
+      profileId: input.profileId,
+      roleLabel: input.roleLabel,
+      status: input.status,
+      invitationStatus: input.invitationStatus || "ACCEPTED",
+      startDate: input.startDate ? new Date(input.startDate) : new Date(),
+      endDate: input.endDate ? new Date(input.endDate) : null,
+      notes: input.notes || null,
+      createdBy: profile.id,
+    },
+  });
+
+  revalidatePath("/schools");
+  revalidatePath("/dashboard");
+  revalidatePath("/sessions");
+  revalidatePath("/calendar");
+  revalidatePath("/reports");
+  revalidatePath("/inventory");
+  revalidatePath("/media");
 }

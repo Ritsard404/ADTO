@@ -152,6 +152,11 @@ export async function getCalendarReadModel(profile: CalendarProfile, query: Cale
     profile.role === "FACILITATOR"
       ? await prisma.facilitatorAssignment.findMany({ where: { facilitatorId: profile.id }, select: { schoolId: true, status: true } })
       : [];
+  const schoolMemberships =
+    profile.role === "SCHOOL_ADMIN"
+      ? await prisma.schoolMembership.findMany({ where: { profileId: profile.id, status: "ACTIVE" }, select: { schoolId: true } })
+      : [];
+  const schoolAdminSchoolIds = schoolMemberships.map((membership) => membership.schoolId);
   const historicalSchoolIds = activeAssignments.map((assignment) => assignment.schoolId);
   const activeSchoolIds = new Set(activeAssignments.filter((assignment) => assignment.status === "ACTIVE").map((assignment) => assignment.schoolId));
 
@@ -159,7 +164,9 @@ export async function getCalendarReadModel(profile: CalendarProfile, query: Cale
     profile.role === "ADMIN"
       ? {}
       : profile.role === "SCHOOL_ADMIN"
-        ? { school: { contactEmail: { equals: profile.email, mode: "insensitive" as const } } }
+        ? schoolAdminSchoolIds.length
+          ? { schoolId: { in: schoolAdminSchoolIds } }
+          : { school: { contactEmail: { equals: profile.email, mode: "insensitive" as const } } }
         : { OR: [{ schoolId: { in: historicalSchoolIds } }, { facilitatorId: profile.id }] };
 
   const sessions = await prisma.aCESession.findMany({
@@ -186,7 +193,9 @@ export async function getCalendarReadModel(profile: CalendarProfile, query: Cale
       profile.role === "ADMIN"
         ? {}
         : profile.role === "SCHOOL_ADMIN"
-          ? { contactEmail: { equals: profile.email, mode: "insensitive" } }
+          ? schoolAdminSchoolIds.length
+            ? { id: { in: schoolAdminSchoolIds } }
+            : { contactEmail: { equals: profile.email, mode: "insensitive" } }
           : { id: { in: historicalSchoolIds } },
     orderBy: { name: "asc" },
     select: { id: true, name: true },

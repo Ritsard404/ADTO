@@ -61,7 +61,7 @@ export default async function ReportsPage({
           orderBy: { generatedAt: "desc" },
           take: 25,
         }),
-    selectedSchool && canUseOfficialReports ? buildSchoolReportPreview(selectedSchool.id, selectedSchoolYear, selectedReportType) : null,
+    selectedSchool ? buildSchoolReportPreview(selectedSchool.id, selectedSchoolYear, selectedReportType) : null,
   ]);
 
   return (
@@ -214,9 +214,28 @@ export default async function ReportsPage({
         </Tabs>
       ) : (
         <Card className="adto-card">
-          <CardContent className="flex items-center gap-3 pt-6 text-sm text-muted-foreground">
-            <FileText className="size-5" />
-            Facilitators can view submitted reports, but official school report generation is limited to School Admins and Admins.
+          <CardHeader>
+            <CardTitle>Facilitator Report Preview</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <FileText className="size-5" />
+              Official PPT/PDF generation is limited to School Admins and Admins. Use this preview to prepare monthly narratives and check the metrics they will see.
+            </div>
+            {preview ? (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {metricCard("Coding Sessions Logged", preview.metrics.totalSessions)}
+                {metricCard("Coding Hours Delivered", preview.metrics.codingHours)}
+                {metricCard("Activities Count", preview.metrics.activities)}
+                {metricCard("Student Outputs", preview.metrics.artifacts)}
+                {metricCard("Participating Teachers", preview.metrics.teachers)}
+                {metricCard("Project Types", preview.metrics.projectTypes)}
+                {metricCard("Most Active Grade", preview.metrics.mostActiveGrade)}
+                {metricCard("Most Active Teacher", preview.metrics.mostActiveTeacher)}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No assigned school is available for report preview.</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -261,6 +280,10 @@ export default async function ReportsPage({
               <Label>
                 School updates
                 <textarea name="schoolUpdates" className="mt-1 min-h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+              </Label>
+              <Label className="md:col-span-2">
+                Quick insights
+                <textarea name="quickInsights" className="mt-1 min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
               </Label>
               <Button type="submit" className="w-fit md:col-span-2">
                 Submit monthly report

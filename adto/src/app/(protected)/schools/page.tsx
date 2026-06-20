@@ -13,6 +13,7 @@ import {
   createTeacherAction,
   createTeacherAssignmentAction,
   updateSchoolAction,
+  upsertSchoolMembershipAction,
 } from "@/features/admin/actions/admin";
 import {
   createFacilitatorSchoolRemarkAction,
@@ -33,7 +34,7 @@ export default async function SchoolsPage({
   const query = params.q?.trim();
   const status = params.status && params.status !== "ALL" ? params.status : undefined;
   const schoolIds = await getAccessibleSchoolIds(profile);
-  const { schools, teachers, sections } = await getSchoolsPortalReadModel(schoolIds, query, status);
+  const { schools, teachers, sections, schoolUsers } = await getSchoolsPortalReadModel(schoolIds, query, status);
   const canManageCoreSchool = profile.role === "ADMIN";
   const sectionAction = canManageCoreSchool ? bulkCreateSectionsAction : upsertFacilitatorSectionAction;
   const teacherAction = canManageCoreSchool ? createTeacherAction : createFacilitatorTeacherAction;
@@ -156,6 +157,54 @@ export default async function SchoolsPage({
                   </select>
                 </Label>
                 <Label>
+                  Deployed form ID
+                  <Input name="deployedFormId" defaultValue={"deployedFormId" in school ? (school.deployedFormId ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Form number
+                  <Input name="formNumber" defaultValue={"formNumber" in school ? (school.formNumber ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Source school ID
+                  <Input name="sourceSchoolId" defaultValue={"sourceSchoolId" in school ? (school.sourceSchoolId ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Logo / file ID
+                  <Input name="schoolLogoFileId" defaultValue={"schoolLogoFileId" in school ? (school.schoolLogoFileId ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Team
+                  <Input name="team" defaultValue={"team" in school ? (school.team ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Unit head
+                  <Input name="unitHead" defaultValue={"unitHead" in school ? (school.unitHead ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Supervisor
+                  <Input name="supervisor" defaultValue={"supervisor" in school ? (school.supervisor ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  Supervisor email
+                  <Input name="supervisorEmail" defaultValue={"supervisorEmail" in school ? (school.supervisorEmail ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  EdTech specialist
+                  <Input name="edtechSpecialist" defaultValue={"edtechSpecialist" in school ? (school.edtechSpecialist ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
+                  EdTech email
+                  <Input name="edtechEmail" defaultValue={"edtechEmail" in school ? (school.edtechEmail ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label className="xl:col-span-2">
+                  Address line 1
+                  <Input name="addressLine1" defaultValue={"addressLine1" in school ? (school.addressLine1 ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label className="xl:col-span-2">
+                  Address line 2
+                  <Input name="addressLine2" defaultValue={"addressLine2" in school ? (school.addressLine2 ?? "") : ""} className="mt-1" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label>
                   Schedule arrangement
                   <select name="scheduleArrangement" defaultValue={"scheduleArrangement" in school ? (school.scheduleArrangement ?? "") : ""} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
                     {["", "Fixed Schedule", "Scheduled by Subject Areas", "Fixed Schedule and Integrated"].map((option) => (
@@ -166,6 +215,14 @@ export default async function SchoolsPage({
                 <Label>
                   Coding modality
                   <Input name="codingModality" defaultValue={"codingModality" in school ? (school.codingModality ?? "") : ""} className="mt-1" />
+                </Label>
+                <Label className="xl:col-span-3">
+                  Grade level adoption
+                  <Textarea name="gradeLevelAdoption" defaultValue={"gradeLevelAdoption" in school ? (school.gradeLevelAdoption ?? "") : ""} className="mt-1 min-h-20" readOnly={!canManageCoreSchool} />
+                </Label>
+                <Label className="xl:col-span-3">
+                  Adoption remarks / addendum
+                  <Textarea name="adoptionRemarks" defaultValue={"adoptionRemarks" in school ? (school.adoptionRemarks ?? "") : ""} className="mt-1 min-h-20" readOnly={!canManageCoreSchool} />
                 </Label>
                 <Label className="xl:col-span-3">
                   Hardware allocation
@@ -310,6 +367,106 @@ export default async function SchoolsPage({
           </form>
         </CardContent>
       </Card>
+
+      <Card className="adto-card">
+        <CardHeader>
+          <CardTitle>Academic Terms And Teacher Participation</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-4 xl:grid-cols-2">
+          {schools.map((school) => (
+            <div key={`${school.id}-terms`} className="space-y-3 rounded-lg border p-3">
+              <div>
+                <p className="font-semibold">{school.name}</p>
+                <p className="text-sm text-muted-foreground">School_Info parity for term coverage, participating teachers, and class engagement.</p>
+              </div>
+              <div className="grid gap-2 text-sm sm:grid-cols-2">
+                {school.schoolYears.map((year) => (
+                  <div key={year.id} className="rounded-md bg-muted/40 p-2">
+                    <p className="font-medium">{year.label}</p>
+                    <p className="text-muted-foreground">
+                      {year.startDate ? year.startDate.toLocaleDateString("en-US") : "No start"} - {year.endDate ? year.endDate.toLocaleDateString("en-US") : "No end"}
+                    </p>
+                    <p className="text-muted-foreground">{year.status}</p>
+                  </div>
+                ))}
+                {!school.schoolYears.length ? <p className="text-muted-foreground">No term dates have been added yet.</p> : null}
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Teacher</TableHead>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Grade</TableHead>
+                    <TableHead>Classes</TableHead>
+                    <TableHead>Hours</TableHead>
+                    <TableHead>Score</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {school.teacherAssignments.map((assignment) => (
+                    <TableRow key={assignment.id}>
+                      <TableCell className="font-medium">{assignment.teacher.fullName}</TableCell>
+                      <TableCell>{assignment.subject}</TableCell>
+                      <TableCell>{assignment.gradeLevel}</TableCell>
+                      <TableCell>{assignment.sessionsParticipated}</TableCell>
+                      <TableCell>{Number(assignment.hoursSupported ?? 0)}</TableCell>
+                      <TableCell>{assignment.participationScore}</TableCell>
+                    </TableRow>
+                  ))}
+                  {!school.teacherAssignments.length ? (
+                    <TableRow><TableCell colSpan={6} className="text-muted-foreground">No teacher participation rows yet.</TableCell></TableRow>
+                  ) : null}
+                </TableBody>
+              </Table>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {canManageCoreSchool ? (
+        <Card className="adto-card">
+          <CardHeader>
+            <CardTitle>School User Access</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 xl:grid-cols-2">
+            <form action={upsertSchoolMembershipAction} className="grid gap-3 rounded-lg border p-4">
+              <h3 className="font-semibold">Link school user</h3>
+              <select name="schoolId" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+              </select>
+              <select name="profileId" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                {schoolUsers.map((user) => <option key={user.id} value={user.id}>{user.fullName} ({user.email})</option>)}
+              </select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select name="roleLabel" defaultValue="SCHOOL_ADMIN" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  {["PRINCIPAL", "SCHOOL_ADMIN", "DEPARTMENT_HEAD", "FACULTY_LEAD", "COORDINATOR", "VIEWER"].map((role) => <option key={role} value={role}>{role.replaceAll("_", " ")}</option>)}
+                </select>
+                <select name="status" defaultValue="ACTIVE" className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+                  {["INVITED", "ACTIVE", "DISABLED", "ENDED"].map((membershipStatus) => <option key={membershipStatus} value={membershipStatus}>{membershipStatus}</option>)}
+                </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Input name="invitationStatus" defaultValue="ACCEPTED" placeholder="Invitation status" />
+                <Input name="startDate" type="date" />
+                <Input name="endDate" type="date" />
+              </div>
+              <Textarea name="notes" placeholder="Access notes or scope" />
+              <Button type="submit">Save school access</Button>
+            </form>
+            <div className="space-y-3 rounded-lg border p-4">
+              <h3 className="font-semibold">Current memberships</h3>
+              {schools.flatMap((school) => school.memberships.map((membership) => ({ school, membership }))).map(({ school, membership }) => (
+                <div key={membership.id} className="rounded-md bg-muted/40 p-2 text-sm">
+                  <p className="font-medium">{membership.profile.fullName}</p>
+                  <p className="text-muted-foreground">{school.name} - {membership.roleLabel.replaceAll("_", " ")} - {membership.status}</p>
+                  {membership.notes ? <p className="text-muted-foreground">{membership.notes}</p> : null}
+                </div>
+              ))}
+              {!schools.some((school) => school.memberships.length) ? <p className="text-sm text-muted-foreground">No explicit school memberships yet. Contact-email fallback may still be in use.</p> : null}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="adto-card">
         <CardHeader>

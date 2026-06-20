@@ -54,7 +54,7 @@ export default async function InventoryPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {items.map((item) => (
-            <form key={item.id} action={verifyInventoryAction} className="grid gap-3 rounded-lg border bg-card p-4 lg:grid-cols-[1.2fr_0.8fr_0.8fr_2fr_auto]">
+            <form key={item.id} action={verifyInventoryAction} className="grid gap-3 rounded-lg border bg-card p-4 lg:grid-cols-6">
               <input type="hidden" name="itemId" value={item.id} />
               <div>
                 <p className="font-semibold">{item.itemName}</p>
@@ -65,11 +65,20 @@ export default async function InventoryPage() {
                   Last checked: {item.lastCheckedAt ? item.lastCheckedAt.toLocaleDateString("en-US") : "Not checked"}{" "}
                   {item.lastCheckedBy ? `by ${item.lastCheckedBy}` : ""}
                 </p>
+                <p className="mt-1 text-xs text-muted-foreground">Source: {item.sourceSheet ?? "Manual record"}</p>
               </div>
               <Label>
                 Quantity
                 <Input name="quantity" type="number" min={0} defaultValue={item.quantity} className="mt-1" />
                 {item.unit ? <span className="mt-1 block text-xs text-muted-foreground">{item.unit}</span> : null}
+              </Label>
+              <Label>
+                Issued
+                <Input name="issuedQuantity" type="number" min={0} defaultValue={item.issuedQuantity ?? item.quantity} className="mt-1" />
+              </Label>
+              <Label>
+                Total
+                <Input name="totalQuantity" type="number" min={0} defaultValue={item.totalQuantity ?? item.quantity} className="mt-1" />
               </Label>
               <Label>
                 Condition
@@ -82,6 +91,18 @@ export default async function InventoryPage() {
                 </select>
               </Label>
               <Label>
+                Borrowed
+                <Input name="borrowedStatus" defaultValue={item.borrowedStatus ?? ""} className="mt-1" placeholder="Borrowed / Not borrowed" />
+              </Label>
+              <Label>
+                Completeness
+                <Input name="completenessStatus" defaultValue={item.completenessStatus ?? ""} className="mt-1" placeholder="Complete / Incomplete" />
+              </Label>
+              <Label>
+                Sign-off
+                <Input name="facilitatorSignOff" defaultValue={item.facilitatorSignOff ?? profile.fullName} className="mt-1" />
+              </Label>
+              <Label className="lg:col-span-2">
                 Remarks
                 <Textarea name="remarks" defaultValue={item.remarks ?? ""} className="mt-1 min-h-20" />
               </Label>

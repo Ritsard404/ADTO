@@ -40,10 +40,13 @@ export async function getAccessibleReportSchools(profile: ProfileLike) {
   }
 
   if (profile.role === "SCHOOL_ADMIN") {
-    return prisma.school.findMany({
-      where: { contactEmail: { equals: profile.email, mode: "insensitive" } },
-      orderBy: { name: "asc" },
+    const memberships = await prisma.schoolMembership.findMany({
+      where: { profileId: profile.id, status: "ACTIVE" },
+      include: { school: true },
+      orderBy: { school: { name: "asc" } },
     });
+    if (memberships.length) return memberships.map((membership) => membership.school);
+    return prisma.school.findMany({ where: { contactEmail: { equals: profile.email, mode: "insensitive" } }, orderBy: { name: "asc" } });
   }
 
   if (profile.role === "FACILITATOR") {
@@ -74,12 +77,19 @@ export async function assertCanAccessReportSchool(profile: ProfileLike, schoolId
     return;
   }
 
-  const school = await prisma.school.findFirst({
+  const membership = await prisma.schoolMembership.findFirst({
+    where: { schoolId, profileId: profile.id, status: "ACTIVE" },
+    select: { id: true },
+  });
+
+  if (membership) return;
+
+  const fallbackSchool = await prisma.school.findFirst({
     where: { id: schoolId, contactEmail: { equals: profile.email, mode: "insensitive" } },
     select: { id: true },
   });
 
-  if (!school) {
+  if (!fallbackSchool) {
     throw new Error("You can only access official reports for your assigned school.");
   }
 }

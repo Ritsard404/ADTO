@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 const SESSION_SOURCE_SHEET = "CleanedData";
 const PROJECT_SOURCE_SHEET = "Projects";
 const INVENTORY_SHEETS = ["GS-i", "HS-i"];
+const SOURCE_WORKBOOK_FILE = "Colegio de la Immaculada Concepcion - Gorordo - ACE Sessions 2025 -2026.xlsx";
 
 type ImportSummary = {
   rowsRead: number;
@@ -100,7 +101,7 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
   });
 
   const sessionRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[SESSION_SOURCE_SHEET], { defval: "", raw: false });
-  for (const row of sessionRows) {
+  for (const [index, row] of sessionRows.entries()) {
     summary.rowsRead += 1;
     const date = parseDate(row.Date);
     const gradeLevel = text(row["Extracted Grade"]);
@@ -127,6 +128,10 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
         completion: text(row.Completion) || null,
         remarks: text(row.Remarks) || null,
         status: mapSessionStatus(text(row.Completion), text(row.Remarks)),
+        sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+        sourceRowRange: `${SESSION_SOURCE_SHEET}!${index + 2}:${index + 2}`,
+        sourceDeployedFormId: text(row["Deployed Form"]) || deployedForm || null,
+        importedAt: new Date(),
       },
       create: {
         schoolId: school.id,
@@ -146,13 +151,17 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
         delivery: text(row.Delivery) || null,
         completion: text(row.Completion) || null,
         remarks: text(row.Remarks) || null,
+        sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+        sourceRowRange: `${SESSION_SOURCE_SHEET}!${index + 2}:${index + 2}`,
+        sourceDeployedFormId: text(row["Deployed Form"]) || deployedForm || null,
+        importedAt: new Date(),
       },
     });
     summary.rowsImported += 1;
   }
 
   const projectRows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[PROJECT_SOURCE_SHEET], { header: 1, defval: "", raw: false });
-  for (const row of projectRows.slice(4)) {
+  for (const [offset, row] of projectRows.slice(4).entries()) {
     summary.rowsRead += 1;
     const title = text(row[7]);
     if (!title) {
@@ -166,6 +175,11 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
       update: {
         remarks: text(row[10]) || null,
         submittedAt: parseDate(row[11]),
+        sourceSheet: PROJECT_SOURCE_SHEET,
+        sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+        sourceRowRange: `${PROJECT_SOURCE_SHEET}!${offset + 5}:${offset + 5}`,
+        sourceDeployedFormId: deployedForm || null,
+        importedAt: new Date(),
       },
       create: {
         schoolId: school.id,
@@ -182,6 +196,11 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
         submittedAt: parseDate(row[11]),
         status: "SUBMITTED",
         sourceKey,
+        sourceSheet: PROJECT_SOURCE_SHEET,
+        sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+        sourceRowRange: `${PROJECT_SOURCE_SHEET}!${offset + 5}:${offset + 5}`,
+        sourceDeployedFormId: deployedForm || null,
+        importedAt: new Date(),
       },
     });
     summary.rowsImported += 1;
@@ -190,7 +209,7 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
   for (const sheetName of INVENTORY_SHEETS) {
     const rows = XLSX.utils.sheet_to_json<unknown[]>(workbook.Sheets[sheetName], { header: 1, defval: "", raw: false });
     let category = sheetName;
-    for (const row of rows.slice(7)) {
+    for (const [offset, row] of rows.slice(7).entries()) {
       summary.rowsRead += 1;
       if (text(row[1]) && !text(row[2])) {
         category = text(row[1]);
@@ -207,19 +226,39 @@ export async function importAdmsWorkbook(workbookPath: string, facilitatorEmail:
         where: { sourceKey },
         update: {
           quantity: Number(text(row[5]) || text(row[4]) || 0),
+          issuedQuantity: Number(text(row[4]) || 0),
+          totalQuantity: Number(text(row[5]) || text(row[4]) || 0),
           unit: text(row[6]) || null,
+          borrowedStatus: text(row[7]) || null,
+          completenessStatus: text(row[10]).toLowerCase() === "true" ? "Complete" : text(row[11]).toLowerCase() === "true" ? "Incomplete" : null,
+          facilitatorSignOff: text(row[13]) || null,
           condition: mapInventoryCondition(text(row[8]), text(row[9]), text(row[10]), text(row[11])),
           remarks: text(row[12]) || null,
+          sourceSheet: sheetName,
+          sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+          sourceRowRange: `${sheetName}!${offset + 8}:${offset + 8}`,
+          sourceDeployedFormId: deployedForm || null,
+          importedAt: new Date(),
         },
         create: {
           schoolId: school.id,
           itemName,
           category,
           quantity: Number(text(row[5]) || text(row[4]) || 0),
+          issuedQuantity: Number(text(row[4]) || 0),
+          totalQuantity: Number(text(row[5]) || text(row[4]) || 0),
           unit: text(row[6]) || null,
+          borrowedStatus: text(row[7]) || null,
+          completenessStatus: text(row[10]).toLowerCase() === "true" ? "Complete" : text(row[11]).toLowerCase() === "true" ? "Incomplete" : null,
+          facilitatorSignOff: text(row[13]) || null,
           condition: mapInventoryCondition(text(row[8]), text(row[9]), text(row[10]), text(row[11])),
           remarks: text(row[12]) || null,
           sourceKey,
+          sourceSheet: sheetName,
+          sourceWorkbookFile: SOURCE_WORKBOOK_FILE,
+          sourceRowRange: `${sheetName}!${offset + 8}:${offset + 8}`,
+          sourceDeployedFormId: deployedForm || null,
+          importedAt: new Date(),
         },
       });
       summary.rowsImported += 1;

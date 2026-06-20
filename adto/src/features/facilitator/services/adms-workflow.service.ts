@@ -5,6 +5,7 @@ import { assertWritableDataMode, isMockDataMode } from "@/lib/runtime-mode";
 
 export type ActiveProfile = {
   id: string;
+  email?: string;
   fullName: string;
   role: UserRole;
 };
@@ -19,6 +20,24 @@ export async function getAccessibleSchoolIds(profile: ActiveProfile) {
       return ["mock-cic-gorordo"];
     }
     return mockAssignments.filter((assignment) => assignment.facilitatorId === profile.id && assignment.status === "ACTIVE").map((assignment) => assignment.schoolId);
+  }
+
+  if (profile.role === "SCHOOL_ADMIN") {
+    const memberships = await prisma.schoolMembership.findMany({
+      where: { profileId: profile.id, status: "ACTIVE" },
+      select: { schoolId: true },
+    });
+
+    if (memberships.length) {
+      return memberships.map((membership) => membership.schoolId);
+    }
+
+    const fallbackSchools = await prisma.school.findMany({
+      where: { contactEmail: { equals: profile.email ?? "", mode: "insensitive" } },
+      select: { id: true },
+    });
+
+    return fallbackSchools.map((school) => school.id);
   }
 
   const assignments = await prisma.facilitatorAssignment.findMany({
@@ -214,6 +233,7 @@ export async function createMonthlyReportForFacilitator(
     challenges?: string;
     recommendations?: string;
     schoolUpdates?: string;
+    quickInsights?: string;
   },
 ) {
   assertWritableDataMode();
@@ -230,6 +250,7 @@ export async function createMonthlyReportForFacilitator(
         input.challenges ? `Challenges: ${input.challenges}` : "",
         input.recommendations ? `Recommendations: ${input.recommendations}` : "",
         input.schoolUpdates ? `School Updates: ${input.schoolUpdates}` : "",
+        input.quickInsights ? `Quick Insights: ${input.quickInsights}` : "",
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -281,6 +302,7 @@ export async function upsertProjectForProfile(
     term?: string;
     gradeLevel?: string;
     section?: string;
+    students?: string;
     teacher?: string;
     projectType?: string;
     description?: string;
@@ -308,6 +330,7 @@ export async function upsertProjectForProfile(
     term: input.term || null,
     gradeLevel: input.gradeLevel || null,
     section: input.section || null,
+    students: input.students || null,
     teacher: input.teacher || null,
     projectType: input.projectType || null,
     description: input.description || null,
@@ -345,7 +368,17 @@ export async function upsertProjectForProfile(
 
 export async function verifyInventoryForProfile(
   profile: ActiveProfile,
-  input: { itemId: string; condition: InventoryCondition; quantity: number; remarks?: string },
+  input: {
+    itemId: string;
+    condition: InventoryCondition;
+    quantity: number;
+    issuedQuantity?: number;
+    totalQuantity?: number;
+    borrowedStatus?: string;
+    completenessStatus?: string;
+    facilitatorSignOff?: string;
+    remarks?: string;
+  },
 ) {
   assertWritableDataMode();
 
@@ -366,6 +399,11 @@ export async function verifyInventoryForProfile(
       data: {
         condition: input.condition,
         quantity: input.quantity,
+        issuedQuantity: input.issuedQuantity ?? null,
+        totalQuantity: input.totalQuantity ?? input.quantity,
+        borrowedStatus: input.borrowedStatus || null,
+        completenessStatus: input.completenessStatus || null,
+        facilitatorSignOff: input.facilitatorSignOff || profile.fullName,
         remarks: input.remarks || null,
         lastCheckedAt: new Date(),
         lastCheckedBy: profile.fullName,
@@ -394,5 +432,48 @@ export async function verifyInventoryForProfile(
     }
 
     return updated;
+  });
+}
+
+export async function createEvidenceLinkForProfile(
+  profile: ActiveProfile,
+  input: {
+    schoolId: string;
+    sessionId?: string;
+    projectId?: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    description?: string;
+  },
+) {
+  assertWritableDataMode();
+  await assertCanAccessSchool(profile, input.schoolId);
+
+  if (input.sessionId) {
+    const session = await prisma.aCESession.findUnique({ where: { id: input.sessionId }, select: { schoolId: true } });
+    if (!session || session.schoolId !== input.schoolId) {
+      throw new Error("Selected session does not belong to the selected school.");
+    }
+  }
+
+  if (input.projectId) {
+    const project = await prisma.aCEProject.findUnique({ where: { id: input.projectId }, select: { schoolId: true } });
+    if (!project || project.schoolId !== input.schoolId) {
+      throw new Error("Selected project does not belong to the selected school.");
+    }
+  }
+
+  return prisma.mediaUpload.create({
+    data: {
+      schoolId: input.schoolId,
+      sessionId: input.sessionId || null,
+      projectId: input.projectId || null,
+      uploadedById: profile.id,
+      fileName: input.fileName,
+      fileUrl: input.fileUrl,
+      fileType: input.fileType,
+      description: input.description || null,
+    },
   });
 }

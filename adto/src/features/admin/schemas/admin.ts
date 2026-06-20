@@ -17,6 +17,20 @@ export const schoolUpdateSchema = z.object({
   adoptionYear: optionalText(40),
   implementationYear: optionalText(40),
   adoptionType: optionalText(120),
+  deployedFormId: optionalText(120),
+  formNumber: optionalText(80),
+  sourceSchoolId: optionalText(120),
+  schoolLogoFileId: optionalText(180),
+  team: optionalText(120),
+  unitHead: optionalText(160),
+  supervisor: optionalText(160),
+  supervisorEmail: optionalText(180),
+  edtechSpecialist: optionalText(160),
+  edtechEmail: optionalText(180),
+  gradeLevelAdoption: optionalText(300),
+  adoptionRemarks: optionalText(1000),
+  addressLine1: optionalText(220),
+  addressLine2: optionalText(220),
   scheduleArrangement: optionalText(120),
   codingModality: optionalText(120),
   hardwareAllocation: optionalText(1000),
@@ -125,4 +139,15 @@ export const userPasswordUpdateSchema = z.object({
 }).refine((value) => value.password === value.confirmPassword, {
   message: "Password and confirmation must match.",
   path: ["confirmPassword"],
+});
+
+export const schoolMembershipUpsertSchema = z.object({
+  schoolId: z.string().min(1),
+  profileId: z.string().uuid(),
+  roleLabel: z.enum(["PRINCIPAL", "SCHOOL_ADMIN", "DEPARTMENT_HEAD", "FACULTY_LEAD", "COORDINATOR", "VIEWER"]),
+  status: z.enum(["INVITED", "ACTIVE", "DISABLED", "ENDED"]),
+  invitationStatus: optionalText(80),
+  startDate: optionalText(32),
+  endDate: optionalText(32),
+  notes: optionalText(1000),
 });

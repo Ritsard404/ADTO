@@ -18,6 +18,7 @@ export const projectUpsertSchema = z.object({
   term: optionalText(80),
   gradeLevel: optionalText(80),
   section: optionalText(120),
+  students: optionalText(500),
   teacher: optionalText(160),
   projectType: optionalText(120),
   description: optionalText(2000),
@@ -31,6 +32,11 @@ export const inventoryVerificationSchema = z.object({
   itemId: z.string().uuid(),
   condition: z.enum(["NEW", "GOOD", "FAIR", "NEEDS_REPLACEMENT", "LOST"]),
   quantity: z.coerce.number().int().min(0),
+  issuedQuantity: z.coerce.number().int().min(0).optional(),
+  totalQuantity: z.coerce.number().int().min(0).optional(),
+  borrowedStatus: optionalText(120),
+  completenessStatus: optionalText(120),
+  facilitatorSignOff: optionalText(160),
   remarks: optionalText(1000),
 });
 
@@ -84,6 +90,7 @@ export const facilitatorMonthlyReportSchema = z.object({
   challenges: optionalText(2000),
   recommendations: optionalText(2000),
   schoolUpdates: optionalText(2000),
+  quickInsights: optionalText(2000),
 });
 
 export const facilitatorSchoolRemarkSchema = z.object({
@@ -94,4 +101,14 @@ export const facilitatorSchoolRemarkSchema = z.object({
   title: z.string().trim().min(1).max(160),
   details: z.string().trim().min(1).max(2000),
   actionItems: optionalText(1500),
+});
+
+export const facilitatorEvidenceLinkSchema = z.object({
+  schoolId: z.string().min(1),
+  sessionId: z.string().uuid().optional().or(z.literal("")),
+  projectId: z.string().uuid().optional().or(z.literal("")),
+  fileName: z.string().trim().min(1).max(180),
+  fileUrl: z.string().trim().url().max(700),
+  fileType: z.string().trim().min(1).max(80),
+  description: optionalText(1000),
 });

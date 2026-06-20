@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireActiveProfile } from "@/lib/auth";
 import {
   createMonthlyReportForFacilitator,
+  createEvidenceLinkForProfile,
   createSchoolRemarkForProfile,
   createSessionForFacilitator,
   createTeacherForFacilitator,
@@ -14,6 +15,7 @@ import {
 } from "@/features/facilitator/services/adms-workflow.service";
 import {
   facilitatorMonthlyReportSchema,
+  facilitatorEvidenceLinkSchema,
   facilitatorSchoolRemarkSchema,
   facilitatorSectionUpsertSchema,
   facilitatorSessionCreateSchema,
@@ -107,5 +109,19 @@ export async function verifyInventoryAction(formData: FormData) {
 
   await verifyInventoryForProfile(profile, input);
   revalidatePath("/inventory");
+  revalidatePath("/dashboard");
+}
+
+export async function createEvidenceLinkAction(formData: FormData) {
+  const profile = await requireActiveProfile();
+  const input = facilitatorEvidenceLinkSchema.parse(formDataToObject(formData));
+
+  await createEvidenceLinkForProfile(profile, {
+    ...input,
+    sessionId: input.sessionId || undefined,
+    projectId: input.projectId || undefined,
+  });
+  revalidatePath("/facilitator/evidence");
+  revalidatePath("/media");
   revalidatePath("/dashboard");
 }

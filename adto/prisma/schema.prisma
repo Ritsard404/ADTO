@@ -79,6 +79,22 @@ enum ProjectStatus {
   COMPLETED
 }
 
+enum SchoolMembershipRole {
+  PRINCIPAL
+  SCHOOL_ADMIN
+  DEPARTMENT_HEAD
+  FACULTY_LEAD
+  COORDINATOR
+  VIEWER
+}
+
+enum SchoolMembershipStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+  ENDED
+}
+
 model Profile {
   id        String     @id @default(uuid())
   email     String     @unique
@@ -92,72 +108,114 @@ model Profile {
   facilitatedSessions    ACESession[]            @relation("FacilitatorSessions")
   reports                Report[]                @relation("ReportFacilitator")
   mediaUploads           MediaUpload[]           @relation("MediaUploader")
+  schoolMemberships      SchoolMembership[]
 }
 
 model School {
-  id            String       @id @default(uuid())
-  name          String
-  address       String
-  contactPerson String
-  contactEmail  String?
-  contactNumber String?
-  schoolCode    String?
-  schoolType    String?
-  region        String?
-  division      String?
-  schoolYear    String
-  adoptionYear  String?
-  implementationYear String?
-  adoptionType  String?
+  id                  String       @id @default(uuid())
+  name                String
+  address             String
+  contactPerson       String
+  contactEmail        String?
+  contactNumber       String?
+  schoolCode          String?
+  schoolType          String?
+  region              String?
+  division            String?
+  schoolYear          String
+  adoptionYear        String?
+  implementationYear  String?
+  adoptionType        String?
+  deployedFormId      String?
+  formNumber          String?
+  sourceSchoolId      String?
+  schoolLogoFileId    String?
+  team                String?
+  unitHead            String?
+  supervisor          String?
+  supervisorEmail     String?
+  edtechSpecialist    String?
+  edtechEmail         String?
+  gradeLevelAdoption  String?
+  adoptionRemarks     String?
+  addressLine1        String?
+  addressLine2        String?
   scheduleArrangement String?
-  codingModality String?
-  hardwareAllocation String?
-  softwareAllocation String?
-  status        SchoolStatus @default(ACTIVE)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  codingModality      String?
+  hardwareAllocation  String?
+  softwareAllocation  String?
+  status              SchoolStatus @default(ACTIVE)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
-  assignments    FacilitatorAssignment[]
-  sessions       ACESession[]
-  projects       ACEProject[]
-  inventoryItems InventoryItem[]
-  reports        Report[]
-  scheduleTemplates ScheduleTemplate[]
-  reportHistories ReportHistory[]
-  schoolYears    SchoolYear[]
-  sections       SchoolSection[]
+  assignments        FacilitatorAssignment[]
+  sessions           ACESession[]
+  projects           ACEProject[]
+  inventoryItems     InventoryItem[]
+  reports            Report[]
+  scheduleTemplates  ScheduleTemplate[]
+  reportHistories    ReportHistory[]
+  schoolYears        SchoolYear[]
+  sections           SchoolSection[]
   teacherAssignments TeacherAssignment[]
-  remarks        SchoolRemark[]
-  reportNarratives ReportNarrative[]
-  mediaUploads   MediaUpload[]
+  remarks            SchoolRemark[]
+  reportNarratives   ReportNarrative[]
+  mediaUploads       MediaUpload[]
+  memberships        SchoolMembership[]
+
+  @@unique([schoolCode])
+  @@unique([deployedFormId])
+  @@unique([sourceSchoolId])
+}
+
+model SchoolMembership {
+  id               String                 @id @default(uuid())
+  schoolId         String
+  profileId        String
+  roleLabel        SchoolMembershipRole   @default(SCHOOL_ADMIN)
+  status           SchoolMembershipStatus @default(ACTIVE)
+  invitationStatus String                 @default("ACCEPTED")
+  startDate        DateTime               @default(now())
+  endDate          DateTime?
+  notes            String?
+  createdBy        String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, profileId])
+  @@index([schoolId])
+  @@index([profileId])
 }
 
 model ScheduleTemplate {
-  id            String   @id @default(uuid())
-  schoolId      String
-  name          String
-  dayOfWeek     Int
-  startTime     String
-  durationHours Decimal  @default(1)
-  gradeLevel    String
-  section       String
-  subject       String?
-  teacher       String?
-  facilitatorId String?
-  delivery      String?
-  activity      String?
-  defaultTopic  String?
+  id             String   @id @default(uuid())
+  schoolId       String
+  name           String
+  dayOfWeek      Int
+  startTime      String
+  durationHours  Decimal  @default(1)
+  gradeLevel     String
+  section        String
+  subject        String?
+  teacher        String?
+  facilitatorId  String?
+  delivery       String?
+  activity       String?
+  defaultTopic   String?
   defaultRemarks String?
-  isActive      Boolean  @default(true)
-  createdById   String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isActive       Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
+  @@unique([schoolId, name])
   @@index([schoolId])
   @@index([createdById])
-  @@unique([schoolId, name])
 }
 
 model SchoolYear {
@@ -177,20 +235,20 @@ model SchoolYear {
 }
 
 model SchoolSection {
-  id           String   @id @default(uuid())
-  schoolId     String
-  schoolYear   String
-  gradeLevel   String
-  sectionName  String
-  adviserName  String?
-  maleStudents Int      @default(0)
-  femaleStudents Int    @default(0)
-  totalStudents Int     @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(uuid())
+  schoolId       String
+  schoolYear     String
+  gradeLevel     String
+  sectionName    String
+  adviserName    String?
+  maleStudents   Int      @default(0)
+  femaleStudents Int      @default(0)
+  totalStudents  Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school             School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   teacherAssignments TeacherAssignment[]
 
   @@unique([schoolId, schoolYear, gradeLevel, sectionName])
@@ -212,23 +270,23 @@ model Teacher {
 }
 
 model TeacherAssignment {
-  id           String   @id @default(uuid())
-  teacherId    String
-  schoolId     String
-  sectionId    String?
-  schoolYear   String
-  gradeLevel   String
-  subject      String
-  sessionsParticipated Int @default(0)
-  hoursSupported Decimal @default(0)
-  projectsFacilitated Int @default(0)
-  attendanceRate Int @default(0)
-  participationScore Int @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  teacherId            String
+  schoolId             String
+  sectionId            String?
+  schoolYear           String
+  gradeLevel           String
+  subject              String
+  sessionsParticipated Int      @default(0)
+  hoursSupported       Decimal  @default(0)
+  projectsFacilitated  Int      @default(0)
+  attendanceRate       Int      @default(0)
+  participationScore   Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  teacher Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   section SchoolSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
 
   @@index([schoolId])
@@ -277,28 +335,32 @@ model FacilitatorAssignment {
 }
 
 model ACESession {
-  id            String        @id @default(uuid())
-  schoolId      String
-  facilitatorId String
-  title         String
-  gradeLevel    String
-  section       String
-  sessionNumber Int
-  scheduledDate DateTime
-  actualDate    DateTime?
-  status        SessionStatus @default(NOT_STARTED)
-  remarks       String?
-  sourceKey     String?       @unique
-  sourceSheet   String?
-  period        String?
-  startTime     String?
-  durationHours Decimal?
-  subject       String?
-  teacher       String?
-  activity      String?
-  delivery      String?
-  completion    String?
-  updatedAt     DateTime      @updatedAt
+  id                   String        @id @default(uuid())
+  schoolId             String
+  facilitatorId        String
+  title                String
+  gradeLevel           String
+  section              String
+  sessionNumber        Int
+  scheduledDate        DateTime
+  actualDate           DateTime?
+  status               SessionStatus @default(NOT_STARTED)
+  remarks              String?
+  sourceKey            String?       @unique
+  sourceSheet          String?
+  sourceWorkbookFile   String?
+  sourceRowRange       String?
+  sourceDeployedFormId String?
+  importedAt           DateTime?
+  period               String?
+  startTime            String?
+  durationHours        Decimal?
+  subject              String?
+  teacher              String?
+  activity             String?
+  delivery             String?
+  completion           String?
+  updatedAt            DateTime      @updatedAt
 
   school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   facilitator Profile          @relation("FacilitatorSessions", fields: [facilitatorId], references: [id], onDelete: Restrict)
@@ -313,31 +375,37 @@ model ACESession {
 }
 
 model ACEProject {
-  id            String        @id @default(uuid())
-  schoolId      String
-  sessionId     String?
-  title         String
-  term          String?
-  gradeLevel    String?
-  section       String?
-  students      String?
-  teacher       String?
-  projectType   String?
-  description   String?
-  projectUrl    String?
-  remarks       String?
-  submittedAt   DateTime?
-  status        ProjectStatus @default(SUBMITTED)
-  sourceKey     String?       @unique
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                   String        @id @default(uuid())
+  schoolId             String
+  sessionId            String?
+  title                String
+  term                 String?
+  gradeLevel           String?
+  section              String?
+  students             String?
+  teacher              String?
+  projectType          String?
+  description          String?
+  projectUrl           String?
+  remarks              String?
+  submittedAt          DateTime?
+  status               ProjectStatus @default(SUBMITTED)
+  sourceKey            String?       @unique
+  sourceSheet          String?
+  sourceWorkbookFile   String?
+  sourceRowRange       String?
+  sourceDeployedFormId String?
+  importedAt           DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
-  school  School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  session ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  school  School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  session ACESession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  media   MediaUpload[]
 
+  @@unique([schoolId, title, gradeLevel, section])
   @@index([schoolId])
   @@index([sessionId])
-  @@unique([schoolId, title, gradeLevel, section])
 }
 
 model SessionProgress {
@@ -354,25 +422,35 @@ model SessionProgress {
 }
 
 model InventoryItem {
-  id            String             @id @default(uuid())
-  schoolId      String
-  itemName      String
-  category      String
-  quantity      Int
-  unit          String?
-  condition     InventoryCondition @default(GOOD)
-  remarks       String?
-  sourceKey     String?            @unique
-  assetNumber   String?
-  deviceType    String?
-  serialNumber  String?
+  id                    String               @id @default(uuid())
+  schoolId              String
+  itemName              String
+  category              String
+  quantity              Int
+  issuedQuantity        Int?
+  totalQuantity         Int?
+  unit                  String?
+  borrowedStatus        String?
+  completenessStatus    String?
+  facilitatorSignOff    String?
+  condition             InventoryCondition   @default(GOOD)
+  remarks               String?
+  sourceKey             String?              @unique
+  sourceSheet           String?
+  sourceWorkbookFile    String?
+  sourceRowRange        String?
+  sourceDeployedFormId  String?
+  importedAt            DateTime?
+  assetNumber           String?
+  deviceType            String?
+  serialNumber          String?
   assignedFacilitatorId String?
-  deploymentDate DateTime?
-  assetStatus   InventoryAssetStatus @default(ASSIGNED)
-  lastCheckedAt DateTime?
-  lastCheckedBy String?
+  deploymentDate        DateTime?
+  assetStatus           InventoryAssetStatus @default(ASSIGNED)
+  lastCheckedAt         DateTime?
+  lastCheckedBy         String?
 
-  school          School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school          School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   checks          InventoryCheck[]
   remarkHistories InventoryRemarkHistory[]
   maintenanceLogs InventoryMaintenanceLog[]
@@ -458,15 +536,15 @@ model ReportHistory {
 }
 
 model ReportNarrative {
-  id          String   @id @default(uuid())
-  schoolId    String
-  schoolYear  String
-  reportType  String
-  sectionKey  String
-  content     String
-  updatedBy   String
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  id         String   @id @default(uuid())
+  schoolId   String
+  schoolYear String
+  reportType String
+  sectionKey String
+  content    String
+  updatedBy  String
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
 
   school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
 
@@ -489,16 +567,16 @@ model AuditLog {
 }
 
 model ApprovalRequest {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   entityType  String
   entityId    String
   action      String
   requestedBy String
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
   notes       String?
   decidedBy   String?
   decidedAt   DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([entityType, entityId])
   @@index([requestedBy])
@@ -508,6 +586,7 @@ model MediaUpload {
   id           String   @id @default(uuid())
   schoolId     String
   sessionId    String?
+  projectId    String?
   uploadedById String
   fileName     String
   fileUrl      String
@@ -517,9 +596,11 @@ model MediaUpload {
 
   school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   session    ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  project    ACEProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   uploadedBy Profile     @relation("MediaUploader", fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@index([schoolId])
   @@index([sessionId])
+  @@index([projectId])
   @@index([uploadedById])
 }

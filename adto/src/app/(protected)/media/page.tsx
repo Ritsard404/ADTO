@@ -1,10 +1,15 @@
 import { PageHeader } from "@/components/common/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { requireActiveProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export default async function MediaPage() {
+  const profile = await requireActiveProfile();
+  const schoolIds = await getAccessibleSchoolIds(profile);
   const uploads = await prisma.mediaUpload.findMany({
+    where: schoolIds ? { schoolId: { in: schoolIds } } : {},
     include: { school: true, uploadedBy: true },
     orderBy: { createdAt: "desc" },
   });

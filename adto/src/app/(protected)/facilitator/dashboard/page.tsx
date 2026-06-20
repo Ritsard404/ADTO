@@ -2,14 +2,22 @@ import { Activity, Boxes, CalendarDays, FileText, GraduationCap, School, Users }
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
 import { MetricCard } from "@/components/dashboard/metric-card";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getFacilitatorWorkspace } from "@/features/facilitator/services/facilitator-workspace.service";
+import { getFacilitatorMonthlyQuickView, getFacilitatorWorkspace } from "@/features/facilitator/services/facilitator-workspace.service";
 import { requireActiveProfile } from "@/lib/auth";
 
-export default async function FacilitatorDashboardPage() {
+export default async function FacilitatorDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ schoolId?: string; month?: string }>;
+}) {
   const profile = await requireActiveProfile();
+  const params = await searchParams;
   const workspace = await getFacilitatorWorkspace(profile);
+  const quickView = await getFacilitatorMonthlyQuickView(profile, params);
   const { metrics } = workspace;
   const assignments = workspace.schools.flatMap((school) => school.assignments);
   const currentAssignment = assignments.find((assignment) => assignment.status === "ACTIVE");
@@ -31,6 +39,49 @@ export default async function FacilitatorDashboardPage() {
         <MetricCard title="Activities" value={metrics.activityCount} description="Workbook activity categories logged" icon={Activity} accent="green" />
         <MetricCard title="Subjects" value={metrics.subjectIntegration} description="Subject integration coverage" icon={GraduationCap} accent="blue" />
       </div>
+      <Card className="adto-card">
+        <CardHeader>
+          <CardTitle>Monthly QuickView</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <form className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+            <select name="schoolId" defaultValue={quickView.selectedSchool?.id ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              {quickView.schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+            </select>
+            <Input name="month" type="month" defaultValue={quickView.month ?? ""} />
+            <Button type="submit">Apply</Button>
+          </form>
+          {quickView.selectedSchool ? (
+            <div className="grid gap-3 lg:grid-cols-[0.9fr_1.1fr_1.1fr]">
+              <div className="rounded-lg border p-3 text-sm">
+                <p className="font-semibold">{quickView.selectedSchool.name}</p>
+                <p className="mt-1 text-muted-foreground">Form: {quickView.selectedSchool.deployedFormId ?? "Not set"}</p>
+                <p className="text-muted-foreground">AF: {profile.fullName}</p>
+                <p className="text-muted-foreground">Grades: {quickView.selectedSchool.gradeLevelAdoption ?? "Not set"}</p>
+                <p className="text-muted-foreground">Adoption: {quickView.selectedSchool.adoptionYear ?? "Not set"} / {quickView.selectedSchool.adoptionType ?? "Not set"}</p>
+                <p className="text-muted-foreground">Schedule: {quickView.selectedSchool.scheduleArrangement ?? "Not set"}</p>
+              </div>
+              {[
+                ["This month", quickView.thisMonth],
+                ["Cumulative", quickView.cumulative],
+              ].map(([label, totals]) => (
+                <div key={label as string} className="grid gap-2 rounded-lg border p-3 text-sm sm:grid-cols-2">
+                  <p className="font-semibold sm:col-span-2">{label as string}</p>
+                  <p>Scheduled: {(totals as typeof quickView.thisMonth).scheduledSessions}</p>
+                  <p>Completed: {(totals as typeof quickView.thisMonth).completedSessions}</p>
+                  <p>Cancelled: {(totals as typeof quickView.thisMonth).cancelledSessions}</p>
+                  <p>Hours: {(totals as typeof quickView.thisMonth).codingHours}</p>
+                  <p>Coders: {(totals as typeof quickView.thisMonth).activeCoders}</p>
+                  <p>Projects: {(totals as typeof quickView.thisMonth).projectsCreated}</p>
+                  <p className="text-muted-foreground sm:col-span-2">Project mix: {(totals as typeof quickView.thisMonth).projectTypeMix}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No active school assignment is available for this QuickView.</p>
+          )}
+        </CardContent>
+      </Card>
       <Card className="adto-card">
         <CardHeader>
           <CardTitle>Assignment Lifecycle</CardTitle>
