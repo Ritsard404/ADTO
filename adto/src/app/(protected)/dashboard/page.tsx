@@ -203,7 +203,7 @@ export default async function DashboardPage({
 
         <aside className="border border-emerald-900/20 bg-[#f8fbf1]">
           <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">Session Detail Preview</div>
-          <div className="max-h-[520px] space-y-1 overflow-y-auto p-2">
+          <div className="max-h-130 space-y-1 overflow-y-auto p-2">
             {dashboard.sessions.slice(0, 18).map((session) => (
               <div key={session.id} className="border border-emerald-900/20 bg-white p-2 text-[11px]">
                 <div className="flex justify-between gap-2">
@@ -222,8 +222,8 @@ export default async function DashboardPage({
 
       <section className="border border-emerald-900/20">
         <div className="bg-[#14532d] px-2 py-1 text-[12px] font-bold text-white">Session Table</div>
-        <div className="max-h-[460px] overflow-auto">
-          <table className="w-full min-w-[980px] border-collapse bg-white text-left text-[11px]">
+        <div className="max-h-115 overflow-auto">
+          <table className="w-full min-w-245 border-collapse bg-white text-left text-[11px]">
             <thead className="sticky top-0 z-10 bg-[#d9ead3] text-[#14532d]">
               <tr>
                 {["Date", "Period", "Grade & Section", "Subject", "Teacher", "Activity", "Topic", "Delivery", "Completion", "Remarks"].map((head) => (

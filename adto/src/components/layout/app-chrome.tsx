@@ -28,7 +28,7 @@ export function AppChrome({
   }
 
   return (
-    <div className={collapsed ? "min-h-screen bg-background lg:pl-[72px]" : "min-h-screen bg-background lg:pl-[240px]"}>
+    <div className={collapsed ? "min-h-screen bg-background lg:pl-18" : "min-h-screen bg-background lg:pl-60"}>
       <AppSidebar profile={profile} collapsed={collapsed} onToggle={toggleCollapsed} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader profile={profile} dataMode={dataMode} testRoleSwitcherEnabled={testRoleSwitcherEnabled} />
