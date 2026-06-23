@@ -12,6 +12,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
+    "auth:admin": "tsx scripts/provision-admin-account.ts",
     "adms:import": "tsx scripts/import-adms-workbook.ts",
     "adms:inspect": "tsx scripts/import-adms-workbook.ts \"legacy/Colegio de la Immaculada Concepcion - Gorordo - ACE Sessions 2025 -2026.xlsx\" \"facilitator@adto.local\" inspect"
   },

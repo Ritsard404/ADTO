@@ -47,7 +47,7 @@ export default async function SettingsPage({
           <CardTitle>Create or Invite User</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createUserAction} className="grid gap-3 md:grid-cols-[1fr_1fr_180px_160px_auto]">
+          <form action={createUserAction} className="grid gap-3 md:grid-cols-[1fr_1fr_180px_160px_180px_180px_auto]">
             <Label>
               Full name
               <Input name="fullName" className="mt-1" required />
@@ -75,6 +75,14 @@ export default async function SettingsPage({
                   </option>
                 ))}
               </select>
+            </Label>
+            <Label>
+              Initial password
+              <Input name="password" type="password" minLength={8} autoComplete="new-password" className="mt-1" required />
+            </Label>
+            <Label>
+              Confirm password
+              <Input name="confirmPassword" type="password" minLength={8} autoComplete="new-password" className="mt-1" required />
             </Label>
             <div className="flex items-end">
               <Button type="submit">Save user</Button>

@@ -273,14 +273,53 @@ export async function createUserAction(formData: FormData) {
   await requireRole(["ADMIN"]);
   const input = userCreateSchema.parse(formDataToObject(formData));
 
+  const email = input.email.toLowerCase();
+  const supabase = createAdminClient();
+  const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+  if (listError) {
+    throw new Error("Supabase Auth admin access is not configured. Check SUPABASE_SERVICE_ROLE_KEY.");
+  }
+
+  const existingAuthUser = users.users.find((user) => user.email?.toLowerCase() === email);
+  const authPayload = {
+    password: input.password,
+    user_metadata: {
+      full_name: input.fullName,
+    },
+    app_metadata: {
+      role: input.role,
+    },
+  };
+
+  if (existingAuthUser) {
+    const { error } = await supabase.auth.admin.updateUserById(existingAuthUser.id, authPayload);
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else {
+    const { error } = await supabase.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      ...authPayload,
+    });
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+
   await prisma.profile.upsert({
-    where: { email: input.email },
+    where: { email },
     update: {
       fullName: input.fullName,
       role: input.role,
       status: input.status,
     },
-    create: input,
+    create: {
+      email,
+      fullName: input.fullName,
+      role: input.role,
+      status: input.status,
+    },
   });
 
   revalidatePath("/settings");

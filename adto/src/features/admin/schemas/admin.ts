@@ -130,6 +130,11 @@ export const userCreateSchema = z.object({
   fullName: z.string().trim().min(1).max(160),
   role: z.enum(["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"]),
   status: z.enum(["PENDING", "ACTIVE", "DISABLED"]),
+  password: z.string().min(8, "Password must be at least 8 characters.").max(128),
+  confirmPassword: z.string().min(8),
+}).refine((value) => value.password === value.confirmPassword, {
+  message: "Password and confirmation must match.",
+  path: ["confirmPassword"],
 });
 
 export const userPasswordUpdateSchema = z.object({
