@@ -1,8 +1,12 @@
 import { CalendarDays, Filter } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
+import { previewWorkbookImportAction, runWorkbookImportAction } from "@/features/admin/actions/admin";
+import { WorkbookImportWizard } from "@/features/admin/components/workbook-import-wizard";
+import { getAdminWorkbookGovernanceReadModel } from "@/features/admin/services/workbook-governance.service";
 import { getCompactDashboardReadModel, statusLabel } from "@/features/dashboard/services/compact-dashboard.service";
 import { requireActiveProfile } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const weekLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -37,6 +41,16 @@ function CompactCell({ label, value }: { label: string; value: string | number }
   );
 }
 
+function issueHref(issue: string) {
+  const normalized = issue.toLowerCase();
+  if (normalized.includes("teacher") || normalized.includes("subject")) return "/sessions";
+  if (normalized.includes("project")) return "/sessions#projects";
+  if (normalized.includes("inventory")) return "/inventory";
+  if (normalized.includes("report")) return "/reports";
+  if (normalized.includes("facilitator") || normalized.includes("deployed")) return "/schools";
+  return "/dashboard";
+}
+
 export default async function DashboardPage({
   searchParams,
 }: {
@@ -45,6 +59,12 @@ export default async function DashboardPage({
   const profile = await requireActiveProfile();
   const params = await searchParams;
   const dashboard = await getCompactDashboardReadModel(profile, params);
+  const [adminGovernance, activeFacilitators] = profile.role === "ADMIN"
+    ? await Promise.all([
+        getAdminWorkbookGovernanceReadModel({ schoolId: params.schoolId, month: dashboard.monthKey }),
+        prisma.profile.findMany({ where: { role: "FACILITATOR", status: "ACTIVE" }, select: { email: true, fullName: true }, orderBy: { fullName: "asc" } }),
+      ])
+    : [null, []];
   const monthCells = buildMonthCells(dashboard.monthKey);
   const visibleMonth = new Date(`${dashboard.monthKey}-01T00:00:00`).getMonth();
   const remainingSessions = Math.max(dashboard.summary.scheduledSessions - dashboard.summary.completedSessions - dashboard.summary.cancelledSessions, 0);
@@ -99,6 +119,64 @@ export default async function DashboardPage({
         <CompactCell label="Coders" value={dashboard.summary.activeCoders} />
         <CompactCell label="Projects" value={dashboard.summary.projectsCreated} />
         <CompactCell label="Teachers" value={dashboard.summary.activeTeachers} />
+      </section>
+
+      {profile.role === "ADMIN" && adminGovernance ? (
+        <section className="grid gap-3 xl:grid-cols-[1fr_1fr]">
+          <div className="rounded-lg border border-emerald-900/20 bg-white p-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-bold text-[#14532d]">Workbook Work Queue</h2>
+              <span className="text-xs text-muted-foreground">{adminGovernance.totals.schoolsNeedingAttention} schools need attention</span>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              {adminGovernance.queues.dataQuality.slice(0, 10).map((item) => (
+                <a key={`${item.school}-${item.issue}`} href={issueHref(item.issue)} className="rounded-md border bg-[#f8fbf1] p-2 text-xs hover:bg-[#edf7e7]">
+                  <p className="font-semibold">{item.school}</p>
+                  <p className="text-muted-foreground">{item.issue}</p>
+                </a>
+              ))}
+              {!adminGovernance.queues.dataQuality.length ? <p className="text-sm text-muted-foreground">No workbook issues in this filter.</p> : null}
+            </div>
+          </div>
+          <WorkbookImportWizard
+            facilitators={activeFacilitators}
+            previewAction={previewWorkbookImportAction}
+            importAction={runWorkbookImportAction}
+          />
+        </section>
+      ) : null}
+
+      <section className="grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-emerald-900/20 bg-[#f8fbf1] p-3 text-xs">
+          <h2 className="mb-2 text-sm font-bold text-[#14532d]">Metric Source Diagnostics</h2>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              ["Sessions", dashboard.summary.scheduledSessions, "ACESession rows in selected month"],
+              ["Completed", dashboard.summary.completedSessions, "status/completion fields"],
+              ["Hours", dashboard.summary.codingHours, "durationHours totals"],
+              ["Coders", dashboard.summary.activeCoders, "SchoolSection student counts"],
+              ["Projects", dashboard.summary.projectsCreated, "ACEProject submissions"],
+              ["Teachers", dashboard.summary.activeTeachers, "session teacher values"],
+            ].map(([label, value, source]) => (
+              <div key={label as string} className="rounded-md border bg-white p-2">
+                <p className="font-semibold">{label}: {value}</p>
+                <p className="text-muted-foreground">{source}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        {profile.role === "SCHOOL_ADMIN" ? (
+          <div className="rounded-lg border border-emerald-900/20 bg-white p-3 text-xs">
+            <h2 className="mb-2 text-sm font-bold text-[#14532d]">School Review</h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <a href="/sessions" className="rounded-md border bg-[#f8fbf1] p-2">Review sessions: <b>{dashboard.summary.scheduledSessions}</b></a>
+              <a href="/reports" className="rounded-md border bg-[#f8fbf1] p-2">Review reports for {dashboard.summary.schoolYear}</a>
+              <a href="/inventory" className="rounded-md border bg-[#f8fbf1] p-2">Inventory readiness</a>
+              <a href="/media" className="rounded-md border bg-[#f8fbf1] p-2">Evidence and media</a>
+            </div>
+            <p className="mt-2 text-muted-foreground">Current scope: {dashboard.summary.schoolName}. Membership controls which schools appear here.</p>
+          </div>
+        ) : null}
       </section>
 
       <div className="grid gap-3 xl:grid-cols-[210px_1fr_360px]">

@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { requireActiveProfile } from "@/lib/auth";
 import {
+  bulkCreateEvidenceLinksForProfile,
+  bulkUpdateSessionDailyLogsForProfile,
   createMonthlyReportForFacilitator,
   createEvidenceLinkForProfile,
   createSchoolRemarkForProfile,
@@ -14,6 +16,10 @@ import {
   verifyInventoryForProfile,
 } from "@/features/facilitator/services/adms-workflow.service";
 import {
+  bulkEvidenceLinkRowSchema,
+  bulkEvidenceLinkSchema,
+  bulkSessionDailyLogRowSchema,
+  bulkSessionDailyLogSchema,
   facilitatorMonthlyReportSchema,
   facilitatorEvidenceLinkSchema,
   facilitatorSchoolRemarkSchema,
@@ -36,6 +42,24 @@ export async function updateSessionAction(formData: FormData) {
   await updateSessionForProfile(profile, input);
   revalidatePath("/sessions");
   revalidatePath("/dashboard");
+}
+
+export async function bulkUpdateSessionDailyLogsAction(formData: FormData) {
+  try {
+    const profile = await requireActiveProfile();
+    const input = bulkSessionDailyLogSchema.parse(formDataToObject(formData));
+    const rawRows = JSON.parse(input.rowsJson) as unknown[];
+    const rows = rawRows.map((row) => bulkSessionDailyLogRowSchema.parse(row));
+    const result = await bulkUpdateSessionDailyLogsForProfile(profile, rows);
+    revalidatePath("/sessions");
+    revalidatePath("/dashboard");
+    revalidatePath("/reports");
+    revalidatePath("/media");
+    return { success: true, ...result } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Daily logs could not be saved. Review the edited rows and try again." } as const;
+  }
 }
 
 export async function createFacilitatorSessionAction(formData: FormData) {
@@ -124,4 +148,22 @@ export async function createEvidenceLinkAction(formData: FormData) {
   revalidatePath("/facilitator/evidence");
   revalidatePath("/media");
   revalidatePath("/dashboard");
+}
+
+export async function bulkCreateEvidenceLinksAction(formData: FormData) {
+  try {
+    const profile = await requireActiveProfile();
+    const input = bulkEvidenceLinkSchema.parse(formDataToObject(formData));
+    const rawRows = JSON.parse(input.rowsJson) as unknown[];
+    const rows = rawRows.map((row) => bulkEvidenceLinkRowSchema.parse(row));
+    const result = await bulkCreateEvidenceLinksForProfile(profile, rows);
+    revalidatePath("/facilitator/evidence");
+    revalidatePath("/media");
+    revalidatePath("/reports");
+    revalidatePath("/dashboard");
+    return { success: true, ...result } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Evidence links could not be saved. Check URLs, school access, and duplicate rows." } as const;
+  }
 }

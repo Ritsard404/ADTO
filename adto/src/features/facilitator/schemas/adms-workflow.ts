@@ -10,6 +10,38 @@ export const sessionUpdateSchema = z.object({
   remarks: optionalText(1000),
 });
 
+export const bulkSessionDailyLogRowSchema = z.object({
+  sessionId: z.string().uuid(),
+  title: z.string().trim().min(1).max(160),
+  status: z.enum(["NOT_STARTED", "ONGOING", "COMPLETED", "MISSED", "RESCHEDULED", "CANCELLED", "FOR_VERIFICATION"]),
+  actualDate: optionalText(32),
+  delivery: optionalText(120),
+  completion: optionalText(120),
+  remarks: optionalText(1000),
+  evidenceName: optionalText(180),
+  evidenceUrl: z.string().trim().url().max(700).optional().or(z.literal("")),
+  projectTitle: optionalText(180),
+  projectUrl: z.string().trim().url().max(700).optional().or(z.literal("")),
+});
+
+export const bulkSessionDailyLogSchema = z.object({
+  rowsJson: z.string().trim().min(2).max(120_000),
+});
+
+export const bulkEvidenceLinkRowSchema = z.object({
+  schoolId: z.string().min(1),
+  sessionId: z.string().uuid().optional().or(z.literal("")),
+  projectId: z.string().uuid().optional().or(z.literal("")),
+  fileName: z.string().trim().min(1).max(180),
+  fileUrl: z.string().trim().url().max(700),
+  fileType: z.string().trim().min(1).max(80).default("Drive link"),
+  description: optionalText(1000),
+});
+
+export const bulkEvidenceLinkSchema = z.object({
+  rowsJson: z.string().trim().min(2).max(80_000),
+});
+
 export const projectUpsertSchema = z.object({
   projectId: z.string().uuid().optional().or(z.literal("")),
   schoolId: z.string().uuid(),

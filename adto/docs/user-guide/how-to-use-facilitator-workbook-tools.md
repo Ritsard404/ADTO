@@ -18,9 +18,10 @@ You must have an active facilitator assignment for the school. If a school is mi
 2. Filter by school and month to compare this-month totals with cumulative totals.
 3. Open **Facilitator Schools** to review adoption setup, term dates, sections, and teacher participation.
 4. Open **Projects** to update project title, term, students involved, grade/section, teacher, type, description, link, remarks, status, and submission date.
-5. Open **Inventory** to verify issued and total quantity, borrowed status, condition, completeness, remarks, and sign-off.
-6. Open **Evidence** to add Drive or external evidence links for a school, session, or project.
-7. Open **Reports** to preview school metrics and submit monthly narratives, challenges, recommendations, school updates, and quick insights.
+5. Open **ACE Sessions** and use **Daily Encoding Grid** to update many copied schedule rows at once with actual date, delivery, completion, remarks, evidence links, and project links.
+6. Open **Inventory** to filter the checklist by school, missing remarks, or items needing attention, then verify issued and total quantity, borrowed status, condition, completeness, remarks, and sign-off.
+7. Open **Media Uploads** to paste Drive evidence links in batches and review project rows that are missing links or media.
+8. Open **Reports** to preview school metrics, use the AI report assistant for draft guidance, and submit monthly narratives, challenges, recommendations, school updates, and quick insights.
 
 ## What happens next
 

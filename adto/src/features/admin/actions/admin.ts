@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { assertWritableDataMode } from "@/lib/runtime-mode";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { importAdmsWorkbookBuffer, inspectAdmsWorkbookBuffer } from "@/features/import-export/services/adms-excel-import";
 import {
   assignmentEndSchema,
   assignmentUpsertSchema,
@@ -24,6 +25,17 @@ import {
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
+}
+
+async function workbookFileFromFormData(formData: FormData) {
+  const file = formData.get("workbook");
+  if (!(file instanceof File) || !file.name) {
+    throw new Error("Upload an ADMS workbook file.");
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error("Workbook is too large. Keep imports under 20 MB per batch.");
+  }
+  return file;
 }
 
 export async function updateSchoolAction(formData: FormData) {
@@ -425,4 +437,52 @@ export async function upsertSchoolMembershipAction(formData: FormData) {
   revalidatePath("/reports");
   revalidatePath("/inventory");
   revalidatePath("/media");
+}
+
+export async function previewWorkbookImportAction(formData: FormData) {
+  try {
+    await requireRole(["ADMIN"]);
+    const file = await workbookFileFromFormData(formData);
+    const sheets = inspectAdmsWorkbookBuffer(await file.arrayBuffer()).map((sheet) => ({
+      name: sheet.name,
+      hidden: sheet.hidden,
+      range: sheet.range,
+      sampleRows: sheet.sampleRows.length,
+      formulas: sheet.formulas.length,
+      firstRow: sheet.sampleRows[0]?.slice(0, 8).map((cell) => String(cell ?? "")) ?? [],
+    }));
+    return { success: true, fileName: file.name, sheets } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Workbook preview failed. Confirm the file is a valid ADMS Excel workbook." } as const;
+  }
+}
+
+export async function runWorkbookImportAction(formData: FormData) {
+  try {
+    assertWritableDataMode();
+    await requireRole(["ADMIN"]);
+    const file = await workbookFileFromFormData(formData);
+    const facilitatorEmail = String(formData.get("facilitatorEmail") ?? "").trim().toLowerCase();
+    if (!facilitatorEmail) {
+      throw new Error("Choose the facilitator email that owns imported session rows.");
+    }
+    const summary = await importAdmsWorkbookBuffer(await file.arrayBuffer(), facilitatorEmail, {
+      sourceWorkbookFile: file.name,
+      sheets: {
+        sessions: formData.get("sessions") === "on",
+        projects: formData.get("projects") === "on",
+        inventory: formData.get("inventory") === "on",
+      },
+    });
+    revalidatePath("/dashboard");
+    revalidatePath("/sessions");
+    revalidatePath("/reports");
+    revalidatePath("/inventory");
+    revalidatePath("/media");
+    return { success: true, ...summary } as const;
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Workbook import failed. Check facilitator email, selected sheets, and workbook structure." } as const;
+  }
 }

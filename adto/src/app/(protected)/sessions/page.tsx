@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { createActivityCategoryAction, upsertAdminSessionAction } from "@/features/admin/actions/admin";
-import { createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/features/facilitator/actions/adms-workflow";
+import { bulkUpdateSessionDailyLogsAction, createFacilitatorSessionAction, updateSessionAction, upsertProjectAction } from "@/features/facilitator/actions/adms-workflow";
 import {
   createScheduleTemplateAction,
   previewBulkSchedulePasteAction,
@@ -16,6 +16,7 @@ import {
   previewScheduleTemplateAction,
   saveBulkScheduleRowsAction,
 } from "@/features/sessions/actions/schedule-workflow";
+import { DailySessionLogGrid, type DailySessionLogRow } from "@/features/sessions/components/daily-session-log-grid";
 import { ScheduleWorkbench } from "@/features/sessions/components/schedule-workbench";
 import { requireActiveProfile } from "@/lib/auth";
 import { withMockRelations } from "@/lib/mock-adms-data";
@@ -33,10 +34,15 @@ function monthLabel(date: Date) {
   return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-export default async function SessionsPage() {
+export default async function SessionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ schoolId?: string; month?: string }>;
+}) {
   const profile = await requireActiveProfile();
+  const params = await searchParams;
   const schoolIds = await getAccessibleSchoolIds(profile);
-  const { sessions, schools, projects } = await getSessionsReadModel(schoolIds);
+  const { monthKey, sessions, schools, projects } = await getSessionsReadModel(schoolIds, params);
   const scheduleTemplates = await getScheduleTemplates(profile, schoolIds);
   const mock = isMockDataMode() ? withMockRelations() : null;
   const facilitators = mock
@@ -54,6 +60,26 @@ export default async function SessionsPage() {
     return groups;
   }, {});
   const canUpdateSessions = profile.role === "FACILITATOR";
+  const dailyRows: DailySessionLogRow[] = sessions.slice(0, 100).map((session) => ({
+    sessionId: session.id,
+    schoolName: session.school.name,
+    scheduledDate: dateInputValue(session.scheduledDate),
+    period: session.period ?? "",
+    gradeSection: `${session.gradeLevel} ${session.section}`,
+    subject: session.subject ?? "",
+    teacher: session.teacher ?? "",
+    activity: session.activity ?? "",
+    title: session.title,
+    status: session.status,
+    actualDate: dateInputValue(session.actualDate),
+    delivery: session.delivery ?? "",
+    completion: session.completion ?? "",
+    remarks: session.remarks ?? "",
+    evidenceName: "",
+    evidenceUrl: "",
+    projectTitle: "",
+    projectUrl: "",
+  }));
 
   return (
     <div className="space-y-6">
@@ -61,6 +87,24 @@ export default async function SessionsPage() {
         title="ACE Sessions"
         description="Update monthly ADMS sessions, facilitator remarks, and student-created ACE project records from the Excel workbook flow."
       />
+
+      <Card className="adto-card">
+        <CardHeader>
+          <CardTitle>Month Window</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="grid gap-3 md:grid-cols-[1fr_180px_auto]">
+            <select name="schoolId" defaultValue={params.schoolId ?? ""} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">All accessible schools</option>
+              {schools.map((school) => (
+                <option key={school.id} value={school.id}>{school.name}</option>
+              ))}
+            </select>
+            <Input name="month" type="month" defaultValue={params.month ?? monthKey} />
+            <Button type="submit" variant="outline">Apply</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {profile.role === "ADMIN" ? (
         <Card className="adto-card">
@@ -260,6 +304,20 @@ export default async function SessionsPage() {
               saveBulkAction={saveBulkScheduleRowsAction}
               createTemplateAction={createScheduleTemplateAction}
             />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canUpdateSessions ? (
+        <Card className="adto-card">
+          <CardHeader>
+            <CardTitle>Daily Encoding Grid</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DailySessionLogGrid sessions={dailyRows} saveAction={bulkUpdateSessionDailyLogsAction} />
+            {sessions.length > dailyRows.length ? (
+              <p className="mt-2 text-sm text-muted-foreground">Showing the first {dailyRows.length} rows in this month window. Narrow the school or month filter before bulk saving more rows.</p>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

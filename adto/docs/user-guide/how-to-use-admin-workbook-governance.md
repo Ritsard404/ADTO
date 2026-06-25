@@ -18,9 +18,9 @@ Sign in as an admin. Make sure school records, facilitator assignments, sessions
 2. Use the workbook filters for school, month, term, facilitator, school status, or adoption type.
 3. Review the QuickView metrics for scheduled sessions, completed sessions, cancelled sessions, coding hours, active coders, project count, project type mix, participating teachers, and attention notes.
 4. Check **Assignment And Coverage Governance** for unassigned schools, overloaded facilitators, inactive facilitators with active assignments, or multiple active assignments.
-5. Check **Workbook Import Review Preview** before applying or reconciling workbook data.
-6. Review **Data Quality Queue** for missing deployed forms, missing teacher or subject data, project links, inventory remarks, or report gaps.
-7. Use the existing Schools, Facilitators, Sessions, Reports, Inventory, and Media pages to correct the records.
+5. Use **Workbook Import Wizard** to upload an ADMS workbook, preview the important sheets, select sessions, projects, or inventory, and import the approved rows.
+6. Review **Workbook Work Queue** for missing deployed forms, missing teacher or subject data, project links, inventory remarks, or report gaps.
+7. Open the linked Schools, Sessions, Reports, Inventory, or Media page from each queue item to correct the record.
 
 ## What happens next
 
@@ -29,6 +29,8 @@ Corrected records are reflected on the dashboard, official reports, and facilita
 ## Tips or reminders
 
 Keep workbook identifiers such as school code, deployed form ID, and source school ID unique. Facilitator-visible school setup fields are shown as governed data when admin control is required.
+
+Use one workbook import batch per school or deployed form. For large workbooks, import only the sheets you need first, then review the queue before importing the next sheet group.
 
 ## Common questions or issues
 

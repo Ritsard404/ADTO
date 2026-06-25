@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { askReportAssistantAction } from "@/features/assistant/actions/report-assistant";
+import { ReportAssistantPanel } from "@/features/assistant/components/report-assistant-panel";
 import { createFacilitatorMonthlyReportAction } from "@/features/facilitator/actions/adms-workflow";
 import { requireActiveProfile } from "@/lib/auth";
 import { withMockRelations } from "@/lib/mock-adms-data";
@@ -135,6 +137,12 @@ export default async function ReportsPage({
                         {metricCard("Active Facilitators", preview.metrics.facilitators)}
                         {metricCard("Most Active Grade", preview.metrics.mostActiveGrade)}
                       </div>
+                      <ReportAssistantPanel
+                        schoolId={preview.school.id}
+                        schoolYear={selectedSchoolYear}
+                        reportType={type.value}
+                        action={askReportAssistantAction}
+                      />
                       <div className="flex flex-wrap gap-3">
                         <Button asChild>
                           <a
@@ -223,15 +231,23 @@ export default async function ReportsPage({
               Official PPT/PDF generation is limited to School Admins and Admins. Use this preview to prepare monthly narratives and check the metrics they will see.
             </div>
             {preview ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {metricCard("Coding Sessions Logged", preview.metrics.totalSessions)}
-                {metricCard("Coding Hours Delivered", preview.metrics.codingHours)}
-                {metricCard("Activities Count", preview.metrics.activities)}
-                {metricCard("Student Outputs", preview.metrics.artifacts)}
-                {metricCard("Participating Teachers", preview.metrics.teachers)}
-                {metricCard("Project Types", preview.metrics.projectTypes)}
-                {metricCard("Most Active Grade", preview.metrics.mostActiveGrade)}
-                {metricCard("Most Active Teacher", preview.metrics.mostActiveTeacher)}
+              <div className="space-y-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {metricCard("Coding Sessions Logged", preview.metrics.totalSessions)}
+                  {metricCard("Coding Hours Delivered", preview.metrics.codingHours)}
+                  {metricCard("Activities Count", preview.metrics.activities)}
+                  {metricCard("Student Outputs", preview.metrics.artifacts)}
+                  {metricCard("Participating Teachers", preview.metrics.teachers)}
+                  {metricCard("Project Types", preview.metrics.projectTypes)}
+                  {metricCard("Most Active Grade", preview.metrics.mostActiveGrade)}
+                  {metricCard("Most Active Teacher", preview.metrics.mostActiveTeacher)}
+                </div>
+                <ReportAssistantPanel
+                  schoolId={preview.school.id}
+                  schoolYear={selectedSchoolYear}
+                  reportType={selectedReportType}
+                  action={askReportAssistantAction}
+                />
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">No assigned school is available for report preview.</p>

@@ -31,6 +31,9 @@ async function main() {
   if (missing.length) {
     throw new Error(`Set ${missing.join(" and ")} before running this script.`);
   }
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Supabase admin environment is incomplete.");
+  }
 
   const supabase = createClient<Database>(supabaseUrl, serviceRoleKey, {
     auth: {

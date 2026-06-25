@@ -9,6 +9,7 @@
 * [How to use the school admin portal](./how-to-use-school-admin-portal.md)
 * [How to manage facilitator assignments](./how-to-manage-facilitator-assignments.md)
 * [How to use admin workbook governance](./how-to-use-admin-workbook-governance.md)
+* [How to use the AI report assistant](./how-to-use-ai-report-assistant.md)
 * [How to manage account passwords](./how-to-manage-account-passwords.md)
 * [How to use the shared school calendar](./how-to-use-shared-school-calendar.md)
 * [How to duplicate and paste ACE schedules](./how-to-duplicate-and-paste-schedules.md)

@@ -29,7 +29,7 @@ Make sure the school, date, grade level, section, facilitator, and time are corr
 
 ## What happens next
 
-Saved rows become ACE session records with a scheduled status. Completion-specific fields such as actual date, completion status, evidence, and final remarks are not copied from the source session. Template-generated sessions use the same preview and conflict checks as duplicated or pasted sessions.
+Saved rows become ACE session records with a scheduled status. Completion-specific fields such as actual date, completion status, evidence, and final remarks are not copied from the source session. Template-generated sessions use the same preview and conflict checks as duplicated or pasted sessions. After copying a week, use **Daily Encoding Grid** to update the new week in bulk.
 
 ## Tips or reminders
 

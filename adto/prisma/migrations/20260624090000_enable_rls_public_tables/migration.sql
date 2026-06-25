@@ -1,0 +1,28 @@
+-- Supabase exposes the public schema through PostgREST, so every application
+-- table in public must have RLS enabled. The app reads and writes these tables
+-- through server-side Prisma with its database connection; no browser-facing
+-- anon/authenticated policies are intentionally granted here.
+ALTER TABLE "Profile" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "School" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SchoolMembership" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ScheduleTemplate" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SchoolYear" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SchoolSection" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Teacher" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "TeacherAssignment" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ActivityCategory" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SchoolRemark" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "FacilitatorAssignment" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ACESession" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ACEProject" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "SessionProgress" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "InventoryItem" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "InventoryMaintenanceLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "InventoryCheck" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "InventoryRemarkHistory" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Report" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ReportHistory" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ReportNarrative" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AuditLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "ApprovalRequest" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "MediaUpload" ENABLE ROW LEVEL SECURITY;

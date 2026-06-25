@@ -10,6 +10,42 @@ export type ActiveProfile = {
   role: UserRole;
 };
 
+type DailyLogRowInput = {
+  sessionId: string;
+  title: string;
+  status: SessionStatus;
+  actualDate?: string;
+  delivery?: string;
+  completion?: string;
+  remarks?: string;
+  evidenceName?: string;
+  evidenceUrl?: string;
+  projectTitle?: string;
+  projectUrl?: string;
+};
+
+type EvidenceLinkRowInput = {
+  schoolId: string;
+  sessionId?: string;
+  projectId?: string;
+  fileName: string;
+  fileUrl: string;
+  fileType: string;
+  description?: string;
+};
+
+function parseOptionalDate(value?: string) {
+  return value ? new Date(value) : null;
+}
+
+function chunk<T>(items: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 export async function getAccessibleSchoolIds(profile: ActiveProfile) {
   if (profile.role === "ADMIN") {
     return null;
@@ -292,6 +328,140 @@ export async function updateSessionForProfile(
   });
 }
 
+export async function bulkUpdateSessionDailyLogsForProfile(profile: ActiveProfile, rows: DailyLogRowInput[]) {
+  assertWritableDataMode();
+
+  if (profile.role === "ADMIN") {
+    throw new Error("Admins can view coding sessions but cannot modify daily facilitator logs.");
+  }
+
+  if (!rows.length) {
+    return { updated: 0, evidenceCreated: 0, projectsLinked: 0, warnings: ["No rows were submitted."] };
+  }
+
+  if (rows.length > 100) {
+    throw new Error("Save daily logs in batches of 100 rows or fewer.");
+  }
+
+  const sessionIds = Array.from(new Set(rows.map((row) => row.sessionId)));
+  const sessions = await prisma.aCESession.findMany({
+    where: { id: { in: sessionIds } },
+    select: {
+      id: true,
+      schoolId: true,
+      scheduledDate: true,
+      gradeLevel: true,
+      section: true,
+      subject: true,
+      teacher: true,
+      activity: true,
+    },
+  });
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+
+  if (sessions.length !== sessionIds.length) {
+    throw new Error("Some daily log rows reference sessions that no longer exist.");
+  }
+
+  const schoolIds = Array.from(new Set(sessions.map((session) => session.schoolId)));
+  for (const schoolId of schoolIds) {
+    await assertCanAccessSchool(profile, schoolId);
+  }
+
+  let updated = 0;
+  let evidenceCreated = 0;
+  let projectsLinked = 0;
+  const warnings: string[] = [];
+
+  for (const batch of chunk(rows, 25)) {
+    await prisma.$transaction(async (tx) => {
+      for (const row of batch) {
+        const session = sessionsById.get(row.sessionId);
+        if (!session) continue;
+
+        await tx.aCESession.update({
+          where: { id: row.sessionId },
+          data: {
+            title: row.title,
+            status: row.status,
+            actualDate: parseOptionalDate(row.actualDate),
+            delivery: row.delivery || null,
+            completion: row.completion || null,
+            remarks: row.remarks || null,
+          },
+        });
+        updated += 1;
+
+        if (row.evidenceUrl) {
+          const duplicateEvidence = await tx.mediaUpload.findFirst({
+            where: { schoolId: session.schoolId, sessionId: row.sessionId, fileUrl: row.evidenceUrl },
+            select: { id: true },
+          });
+          if (!duplicateEvidence) {
+            await tx.mediaUpload.create({
+              data: {
+                schoolId: session.schoolId,
+                sessionId: row.sessionId,
+                uploadedById: profile.id,
+                fileName: row.evidenceName || `${row.title} evidence`,
+                fileUrl: row.evidenceUrl,
+                fileType: "Drive link",
+                description: row.remarks || null,
+              },
+            });
+            evidenceCreated += 1;
+          }
+        }
+
+        if (row.projectUrl || row.projectTitle) {
+          const title = row.projectTitle || `${session.gradeLevel} ${session.section} output ${session.scheduledDate.toISOString().slice(0, 10)}`;
+          await tx.aCEProject.upsert({
+            where: {
+              schoolId_title_gradeLevel_section: {
+                schoolId: session.schoolId,
+                title,
+                gradeLevel: session.gradeLevel,
+                section: session.section,
+              },
+            },
+            update: {
+              sessionId: row.sessionId,
+              projectUrl: row.projectUrl || undefined,
+              remarks: row.remarks || undefined,
+              status: "SUBMITTED",
+            },
+            create: {
+              schoolId: session.schoolId,
+              sessionId: row.sessionId,
+              title,
+              gradeLevel: session.gradeLevel,
+              section: session.section,
+              teacher: session.teacher,
+              projectType: session.activity,
+              projectUrl: row.projectUrl || null,
+              remarks: row.remarks || null,
+              status: "SUBMITTED",
+              submittedAt: parseOptionalDate(row.actualDate) ?? new Date(),
+            },
+          });
+          projectsLinked += 1;
+        }
+
+        if (!session.teacher || !session.subject || !row.completion) {
+          warnings.push(`${session.gradeLevel} ${session.section} needs teacher, subject, or completion review.`);
+        }
+      }
+    });
+  }
+
+  return {
+    updated,
+    evidenceCreated,
+    projectsLinked,
+    warnings: Array.from(new Set(warnings)).slice(0, 8),
+  };
+}
+
 export async function upsertProjectForProfile(
   profile: ActiveProfile,
   input: {
@@ -476,4 +646,81 @@ export async function createEvidenceLinkForProfile(
       description: input.description || null,
     },
   });
+}
+
+export async function bulkCreateEvidenceLinksForProfile(profile: ActiveProfile, rows: EvidenceLinkRowInput[]) {
+  assertWritableDataMode();
+
+  if (!rows.length) {
+    return { created: 0, skipped: 0 };
+  }
+
+  if (rows.length > 75) {
+    throw new Error("Save evidence links in batches of 75 rows or fewer.");
+  }
+
+  const schoolIds = Array.from(new Set(rows.map((row) => row.schoolId)));
+  for (const schoolId of schoolIds) {
+    await assertCanAccessSchool(profile, schoolId);
+  }
+
+  const sessionIds = rows.map((row) => row.sessionId).filter(Boolean) as string[];
+  const projectIds = rows.map((row) => row.projectId).filter(Boolean) as string[];
+  const [sessions, projects] = await Promise.all([
+    sessionIds.length
+      ? prisma.aCESession.findMany({ where: { id: { in: sessionIds } }, select: { id: true, schoolId: true } })
+      : Promise.resolve([]),
+    projectIds.length
+      ? prisma.aCEProject.findMany({ where: { id: { in: projectIds } }, select: { id: true, schoolId: true } })
+      : Promise.resolve([]),
+  ]);
+  const sessionSchool = new Map(sessions.map((session) => [session.id, session.schoolId]));
+  const projectSchool = new Map(projects.map((project) => [project.id, project.schoolId]));
+
+  let created = 0;
+  let skipped = 0;
+  for (const batch of chunk(rows, 25)) {
+    await prisma.$transaction(async (tx) => {
+      for (const row of batch) {
+        if (row.sessionId && sessionSchool.get(row.sessionId) !== row.schoolId) {
+          skipped += 1;
+          continue;
+        }
+        if (row.projectId && projectSchool.get(row.projectId) !== row.schoolId) {
+          skipped += 1;
+          continue;
+        }
+
+        const duplicate = await tx.mediaUpload.findFirst({
+          where: {
+            schoolId: row.schoolId,
+            fileUrl: row.fileUrl,
+            sessionId: row.sessionId || null,
+            projectId: row.projectId || null,
+          },
+          select: { id: true },
+        });
+        if (duplicate) {
+          skipped += 1;
+          continue;
+        }
+
+        await tx.mediaUpload.create({
+          data: {
+            schoolId: row.schoolId,
+            sessionId: row.sessionId || null,
+            projectId: row.projectId || null,
+            uploadedById: profile.id,
+            fileName: row.fileName,
+            fileUrl: row.fileUrl,
+            fileType: row.fileType,
+            description: row.description || null,
+          },
+        });
+        created += 1;
+      }
+    });
+  }
+
+  return { created, skipped };
 }
