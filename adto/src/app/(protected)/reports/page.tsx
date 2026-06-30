@@ -15,6 +15,7 @@ import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
 import { buildSchoolReportPreview, getAccessibleReportSchools, type ReportType } from "@/features/reports/services/school-report.service";
+import { resolveStorageUrl } from "@/features/media/services/private-storage.service";
 
 const officialReportTypes: Array<{ value: ReportType; label: string; tab: string }> = [
   { value: "dashboard", label: "School Dashboard Report", tab: "Dashboard Reports" },
@@ -65,6 +66,13 @@ export default async function ReportsPage({
         }),
     selectedSchool ? buildSchoolReportPreview(selectedSchool.id, selectedSchoolYear, selectedReportType) : null,
   ]);
+  const historyWithUrls = await Promise.all(
+    history.map(async (entry) => ({
+      ...entry,
+      pptDownloadUrl: await resolveStorageUrl(entry.pptFileUrl),
+      pdfDownloadUrl: await resolveStorageUrl(entry.pdfFileUrl),
+    })),
+  );
 
   return (
     <div className="space-y-6">
@@ -191,7 +199,7 @@ export default async function ReportsPage({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {history.map((entry) => (
+                    {historyWithUrls.map((entry) => (
                       <TableRow key={entry.id}>
                         <TableCell className="font-medium">{entry.school.name}</TableCell>
                         <TableCell>{entry.reportType.replace("-", " ")}</TableCell>
@@ -199,10 +207,10 @@ export default async function ReportsPage({
                         <TableCell>{entry.generatedAt.toLocaleString("en-US")}</TableCell>
                         <TableCell className="flex gap-2">
                           <Button asChild size="sm" variant="outline">
-                            <a href={entry.pptFileUrl}>PPT</a>
+                            <a href={entry.pptDownloadUrl}>PPT</a>
                           </Button>
                           <Button asChild size="sm" variant="outline">
-                            <a href={entry.pdfFileUrl}>PDF</a>
+                            <a href={entry.pdfDownloadUrl}>PDF</a>
                           </Button>
                         </TableCell>
                       </TableRow>

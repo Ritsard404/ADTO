@@ -78,7 +78,8 @@ async function buildAssistantContext(profile: ActiveProfile, input: ReportAssist
 export async function answerReportAssistantQuestion(profile: ActiveProfile, input: ReportAssistantInput) {
   const context = await buildAssistantContext(profile, input);
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const model = process.env.OPENAI_MODEL;
+  if (!apiKey || !model) {
     return {
       answer: buildFallbackGuidance(context, input.question),
       provider: "local",
@@ -92,7 +93,7 @@ export async function answerReportAssistantQuestion(profile: ActiveProfile, inpu
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-5.5",
+      model,
       store: false,
       reasoning: { effort: "low" },
       text: { verbosity: "low" },

@@ -20,7 +20,17 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "
 
 type CalendarProps = {
   readModel: CalendarReadModel;
-  initialFilters: Record<string, string | undefined>;
+  initialFilters: {
+    schoolId?: string;
+    facilitatorId?: string;
+    gradeLevel?: string;
+    section?: string;
+    teacher?: string;
+    activityType?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+  };
 };
 
 function detailRows(event: CalendarSessionEvent) {

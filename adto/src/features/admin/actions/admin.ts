@@ -1,9 +1,12 @@
 "use server";
 
+import { createHash, randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/lib/auth";
+import { recordAuditLog } from "@/features/security/services/audit-log.service";
 import { prisma } from "@/lib/prisma";
 import { assertWritableDataMode } from "@/lib/runtime-mode";
+import { enforceRateLimit, isRateLimitError } from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { importAdmsWorkbookBuffer, inspectAdmsWorkbookBuffer } from "@/features/import-export/services/adms-excel-import";
 import {
@@ -25,6 +28,10 @@ import {
 
 function formDataToObject(formData: FormData) {
   return Object.fromEntries(formData.entries());
+}
+
+function checksumArrayBuffer(buffer: ArrayBuffer) {
+  return createHash("sha256").update(Buffer.from(buffer)).digest("hex");
 }
 
 async function workbookFileFromFormData(formData: FormData) {
@@ -285,7 +292,8 @@ export async function endAssignmentAction(formData: FormData) {
 
 export async function createUserAction(formData: FormData) {
   assertWritableDataMode();
-  await requireRole(["ADMIN"]);
+  const adminProfile = await requireRole(["ADMIN"]);
+  enforceRateLimit({ key: `admin-create-user:${adminProfile.id}`, limit: 15, windowMs: 15 * 60_000 });
   const input = userCreateSchema.parse(formDataToObject(formData));
 
   const email = input.email.toLowerCase();
@@ -337,6 +345,14 @@ export async function createUserAction(formData: FormData) {
     },
   });
 
+  await recordAuditLog({
+    actorId: adminProfile.id,
+    entityType: "Profile",
+    entityId: email,
+    action: existingAuthUser ? "USER_AUTH_UPDATED" : "USER_CREATED",
+    newValue: { email, role: input.role, status: input.status },
+  });
+
   revalidatePath("/settings");
   revalidatePath("/facilitators");
   revalidatePath("/dashboard");
@@ -363,7 +379,15 @@ export async function updateUserAction(formData: FormData) {
 
 export async function updateUserPasswordAction(formData: FormData) {
   assertWritableDataMode();
-  await requireRole(["ADMIN"]);
+  const adminProfile = await requireRole(["ADMIN"]);
+  try {
+    enforceRateLimit({ key: `admin-password-reset:${adminProfile.id}`, limit: 10, windowMs: 15 * 60_000 });
+  } catch (error) {
+    if (isRateLimitError(error)) {
+      return { success: false, error: "Too many password reset attempts. Try again in a few minutes." } as const;
+    }
+    throw error;
+  }
   const parsed = userPasswordUpdateSchema.safeParse(formDataToObject(formData));
 
   if (!parsed.success) {
@@ -376,6 +400,13 @@ export async function updateUserPasswordAction(formData: FormData) {
   });
 
   if (!profile) {
+    await recordAuditLog({
+      actorId: adminProfile.id,
+      entityType: "Profile",
+      entityId: parsed.data.profileId,
+      action: "ADMIN_PASSWORD_RESET_FAILED",
+      newValue: { reason: "Profile not found" },
+    });
     return { success: false, error: "User account was not found." } as const;
   }
 
@@ -388,6 +419,13 @@ export async function updateUserPasswordAction(formData: FormData) {
 
     const authUser = data.users.find((user) => user.email?.toLowerCase() === profile.email.toLowerCase());
     if (!authUser) {
+      await recordAuditLog({
+        actorId: adminProfile.id,
+        entityType: "Profile",
+        entityId: parsed.data.profileId,
+        action: "ADMIN_PASSWORD_RESET_FAILED",
+        newValue: { reason: "Missing Supabase Auth user" },
+      });
       return { success: false, error: "This profile does not have a matching Supabase Auth user yet." } as const;
     }
 
@@ -397,9 +435,23 @@ export async function updateUserPasswordAction(formData: FormData) {
     }
 
     revalidatePath("/settings");
+    await recordAuditLog({
+      actorId: adminProfile.id,
+      entityType: "Profile",
+      entityId: parsed.data.profileId,
+      action: "ADMIN_PASSWORD_RESET",
+      newValue: { email: profile.email },
+    });
     return { success: true } as const;
   } catch (error) {
     console.error(error);
+    await recordAuditLog({
+      actorId: adminProfile.id,
+      entityType: "Profile",
+      entityId: parsed.data.profileId,
+      action: "ADMIN_PASSWORD_RESET_FAILED",
+      newValue: { reason: "Supabase admin update failed" },
+    });
     return { success: false, error: "Password could not be updated. Check Supabase admin configuration and try again." } as const;
   }
 }
@@ -443,10 +495,17 @@ export async function upsertSchoolMembershipAction(formData: FormData) {
 }
 
 export async function previewWorkbookImportAction(formData: FormData) {
+  let actorId: string | null = null;
+  let fileName = "unknown";
   try {
-    await requireRole(["ADMIN"]);
+    const profile = await requireRole(["ADMIN"]);
+    actorId = profile.id;
+    enforceRateLimit({ key: `workbook-preview:${profile.id}`, limit: 8, windowMs: 15 * 60_000 });
     const file = await workbookFileFromFormData(formData);
-    const sheets = inspectAdmsWorkbookBuffer(await file.arrayBuffer()).map((sheet) => ({
+    fileName = file.name;
+    const workbookBuffer = await file.arrayBuffer();
+    const checksum = checksumArrayBuffer(workbookBuffer);
+    const sheets = inspectAdmsWorkbookBuffer(workbookBuffer).map((sheet) => ({
       name: sheet.name,
       hidden: sheet.hidden,
       range: sheet.range,
@@ -454,29 +513,102 @@ export async function previewWorkbookImportAction(formData: FormData) {
       formulas: sheet.formulas.length,
       firstRow: sheet.sampleRows[0]?.slice(0, 8).map((cell) => String(cell ?? "")) ?? [],
     }));
-    return { success: true, fileName: file.name, sheets } as const;
+    await recordAuditLog({
+      actorId: profile.id,
+      entityType: "WorkbookImport",
+      entityId: file.name,
+      action: "WORKBOOK_PREVIEWED",
+      newValue: { fileName: file.name, size: file.size, checksum, sheetCount: sheets.length },
+    });
+    return { success: true, fileName: file.name, checksum, sheets } as const;
   } catch (error) {
     console.error(error);
+    if (actorId) {
+      await recordAuditLog({
+        actorId,
+        entityType: "WorkbookImport",
+        entityId: fileName,
+        action: "WORKBOOK_PREVIEW_FAILED",
+        newValue: { reason: error instanceof Error ? error.message : "Workbook preview failed" },
+      });
+    }
+    if (isRateLimitError(error)) {
+      return { success: false, error: "Too many workbook preview attempts. Try again in a few minutes." } as const;
+    }
     return { success: false, error: error instanceof Error ? error.message : "Workbook preview failed. Confirm the file is a valid ADMS Excel workbook." } as const;
   }
 }
 
 export async function runWorkbookImportAction(formData: FormData) {
+  let actorId: string | null = null;
+  let fileName = "unknown";
+  let batchId: string | null = null;
   try {
     assertWritableDataMode();
-    await requireRole(["ADMIN"]);
+    const profile = await requireRole(["ADMIN"]);
+    actorId = profile.id;
+    enforceRateLimit({ key: `workbook-import:${profile.id}`, limit: 4, windowMs: 30 * 60_000 });
     const file = await workbookFileFromFormData(formData);
+    fileName = file.name;
     const facilitatorEmail = String(formData.get("facilitatorEmail") ?? "").trim().toLowerCase();
     if (!facilitatorEmail) {
       throw new Error("Choose the facilitator email that owns imported session rows.");
     }
-    const summary = await importAdmsWorkbookBuffer(await file.arrayBuffer(), facilitatorEmail, {
+    const selectedSheets = {
+      schoolInfo: formData.get("schoolInfo") === "on",
+      sessions: formData.get("sessions") === "on",
+      projects: formData.get("projects") === "on",
+      inventory: formData.get("inventory") === "on",
+    };
+    const workbookBuffer = await file.arrayBuffer();
+    const checksum = checksumArrayBuffer(workbookBuffer);
+    const previousCompletedBatch = await prisma.workbookImportBatch.findFirst({
+      where: { checksum, status: "COMPLETED" },
+      orderBy: { completedAt: "desc" },
+      select: { id: true, fileName: true, schoolName: true },
+    });
+    if (previousCompletedBatch) {
+      await recordAuditLog({
+        actorId: profile.id,
+        entityType: "WorkbookImportBatch",
+        entityId: previousCompletedBatch.id,
+        action: "WORKBOOK_IMPORT_DUPLICATE_BLOCKED",
+        newValue: { fileName: file.name, checksum, previousFileName: previousCompletedBatch.fileName },
+      });
+      return {
+        success: false,
+        error: `This workbook matches a completed import${previousCompletedBatch.schoolName ? ` for ${previousCompletedBatch.schoolName}` : ""}. Use a different workbook or verify the existing batch first.`,
+      } as const;
+    }
+
+    const batch = await prisma.workbookImportBatch.create({
+      data: {
+        id: randomUUID(),
+        fileName: file.name,
+        checksum,
+        importedById: profile.id,
+        facilitatorEmail,
+        selectedSheets: JSON.stringify(selectedSheets),
+        status: "RUNNING",
+      },
+    });
+    batchId = batch.id;
+
+    const summary = await importAdmsWorkbookBuffer(workbookBuffer, facilitatorEmail, {
       sourceWorkbookFile: file.name,
-      sheets: {
-        schoolInfo: formData.get("schoolInfo") === "on",
-        sessions: formData.get("sessions") === "on",
-        projects: formData.get("projects") === "on",
-        inventory: formData.get("inventory") === "on",
+      sheets: selectedSheets,
+    });
+    await prisma.workbookImportBatch.update({
+      where: { id: batch.id },
+      data: {
+        status: "COMPLETED",
+        rowsRead: summary.rowsRead,
+        rowsImported: summary.rowsImported,
+        rowsSkipped: summary.rowsSkipped,
+        validationErrors: summary.validationErrors.length ? JSON.stringify(summary.validationErrors) : null,
+        schoolId: summary.schoolId ?? null,
+        schoolName: summary.schoolName ?? null,
+        completedAt: new Date(),
       },
     });
     revalidatePath("/dashboard");
@@ -485,9 +617,48 @@ export async function runWorkbookImportAction(formData: FormData) {
     revalidatePath("/reports");
     revalidatePath("/inventory");
     revalidatePath("/media");
-    return { success: true, ...summary } as const;
+    await recordAuditLog({
+      actorId: profile.id,
+      entityType: "WorkbookImportBatch",
+      entityId: batch.id,
+      action: "WORKBOOK_IMPORTED",
+      newValue: {
+        fileName: file.name,
+        size: file.size,
+        checksum,
+        facilitatorEmail,
+        rowsRead: summary.rowsRead,
+        rowsImported: summary.rowsImported,
+        rowsSkipped: summary.rowsSkipped,
+        validationErrors: summary.validationErrors.length,
+        schoolId: summary.schoolId,
+      },
+    });
+    return { success: true, importBatchId: batch.id, checksum, ...summary } as const;
   } catch (error) {
     console.error(error);
+    if (batchId) {
+      await prisma.workbookImportBatch.update({
+        where: { id: batchId },
+        data: {
+          status: "FAILED",
+          errorMessage: error instanceof Error ? error.message.slice(0, 1000) : "Workbook import failed",
+          failedAt: new Date(),
+        },
+      });
+    }
+    if (actorId) {
+      await recordAuditLog({
+        actorId,
+        entityType: batchId ? "WorkbookImportBatch" : "WorkbookImport",
+        entityId: batchId ?? fileName,
+        action: "WORKBOOK_IMPORT_FAILED",
+        newValue: { reason: error instanceof Error ? error.message : "Workbook import failed" },
+      });
+    }
+    if (isRateLimitError(error)) {
+      return { success: false, error: "Too many workbook import attempts. Try again in a few minutes." } as const;
+    }
     return { success: false, error: error instanceof Error ? error.message : "Workbook import failed. Check facilitator email, selected sheets, and workbook structure." } as const;
   }
 }

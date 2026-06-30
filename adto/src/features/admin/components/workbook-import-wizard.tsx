@@ -14,6 +14,7 @@ type PreviewResult =
   | {
       success: true;
       fileName: string;
+      checksum: string;
       sheets: Array<{ name: string; hidden: number; range: string; sampleRows: number; formulas: number; firstRow: string[] }>;
     }
   | { success: false; error: string };
@@ -28,6 +29,8 @@ type ImportResult =
       schoolId?: string;
       schoolName?: string;
       sourceWorkbookFile?: string;
+      importBatchId?: string;
+      checksum?: string;
     }
   | { success: false; error: string };
 
@@ -97,6 +100,7 @@ export function WorkbookImportWizard({
           {preview.success ? (
             <>
               <p className="font-medium">{preview.fileName}</p>
+              <p className="text-muted-foreground">Checksum: {preview.checksum.slice(0, 16)}</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 {preview.sheets
                   .filter((sheet) => ["CleanedData", "Projects", "GS-i", "HS-i", "AdoptionDetails", "School_Info"].includes(sheet.name))
@@ -120,6 +124,9 @@ export function WorkbookImportWizard({
             <div className="space-y-2">
               <p className="font-medium">{result.schoolName ?? "ADMS workbook"} imported.</p>
               <p>{result.rowsImported} imported, {result.rowsSkipped} skipped, {result.rowsRead} rows read.</p>
+              {result.importBatchId ? (
+                <p className="text-muted-foreground">Batch: {result.importBatchId.slice(0, 8)} / checksum {result.checksum?.slice(0, 16)}</p>
+              ) : null}
               {result.validationErrors.length ? (
                 <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                   {result.validationErrors.map((error) => (

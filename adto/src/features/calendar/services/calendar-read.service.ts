@@ -23,6 +23,54 @@ type CalendarQuery = {
   endDate?: string;
 };
 
+const MAX_CALENDAR_WINDOW_DAYS = 731;
+
+function dateInputValue(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function parseDateInput(value?: string) {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function defaultCalendarDateRange(now = new Date()) {
+  const schoolYearStart = now.getMonth() >= 5 ? now.getFullYear() - 1 : now.getFullYear() - 2;
+  const start = new Date(schoolYearStart, 5, 1);
+  const end = new Date(schoolYearStart + 2, 4, 31);
+  return { startDate: dateInputValue(start), endDate: dateInputValue(end) };
+}
+
+export function normalizeCalendarQuery(query: CalendarQuery = {}): CalendarQuery {
+  const defaults = defaultCalendarDateRange();
+  const start = parseDateInput(query.startDate) ?? parseDateInput(defaults.startDate)!;
+  let end = parseDateInput(query.endDate) ?? parseDateInput(defaults.endDate)!;
+
+  if (end < start) {
+    end = addDays(start, MAX_CALENDAR_WINDOW_DAYS);
+  }
+
+  const maxEnd = addDays(start, MAX_CALENDAR_WINDOW_DAYS);
+  if (end > maxEnd) {
+    end = maxEnd;
+  }
+
+  return {
+    ...query,
+    startDate: dateInputValue(start),
+    endDate: dateInputValue(end),
+  };
+}
+
 function addMinutes(date: Date, minutes: number) {
   return new Date(date.getTime() + minutes * 60_000);
 }
@@ -120,6 +168,7 @@ function filterEvents(events: CalendarSessionEvent[], query: CalendarQuery) {
 }
 
 export async function getCalendarReadModel(profile: CalendarProfile, query: CalendarQuery = {}): Promise<CalendarReadModel> {
+  const normalizedQuery = normalizeCalendarQuery(query);
   if (isMockDataMode()) {
     const mock = withMockRelations();
     const assignments = profile.role === "FACILITATOR" ? mock.assignments.filter((assignment) => assignment.facilitatorId === profile.id) : mock.assignments;
@@ -135,7 +184,7 @@ export async function getCalendarReadModel(profile: CalendarProfile, query: Cale
     return {
       role: profile.role,
       canCreateSessions: profile.role === "ADMIN" || profile.role === "FACILITATOR",
-      events: filterEvents(events, query),
+      events: filterEvents(events, normalizedQuery),
       filters: {
         schools: mock.schools.filter((school) => profile.role === "ADMIN" || assignedSchoolIds.has(school.id) || school.contactEmail?.toLowerCase() === profile.email.toLowerCase()).map((school) => ({ id: school.id, name: school.name })),
         facilitators: mock.facilitators.map((facilitator) => ({ id: facilitator.id, name: facilitator.fullName })),
@@ -172,16 +221,16 @@ export async function getCalendarReadModel(profile: CalendarProfile, query: Cale
   const sessions = await prisma.aCESession.findMany({
     where: {
       ...scopedWhere,
-      schoolId: query.schoolId || undefined,
-      facilitatorId: query.facilitatorId || undefined,
-      gradeLevel: query.gradeLevel || undefined,
-      section: query.section || undefined,
-      teacher: query.teacher || undefined,
-      activity: query.activityType || undefined,
-      status: query.status || undefined,
+      schoolId: normalizedQuery.schoolId || undefined,
+      facilitatorId: normalizedQuery.facilitatorId || undefined,
+      gradeLevel: normalizedQuery.gradeLevel || undefined,
+      section: normalizedQuery.section || undefined,
+      teacher: normalizedQuery.teacher || undefined,
+      activity: normalizedQuery.activityType || undefined,
+      status: normalizedQuery.status || undefined,
       scheduledDate: {
-        gte: query.startDate ? new Date(query.startDate) : undefined,
-        lte: query.endDate ? new Date(query.endDate) : undefined,
+        gte: parseDateInput(normalizedQuery.startDate)!,
+        lte: parseDateInput(normalizedQuery.endDate)!,
       },
     },
     include: { school: true, facilitator: true, media: { select: { id: true } }, projects: { select: { id: true } } },

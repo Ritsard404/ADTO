@@ -617,6 +617,17 @@ export async function createEvidenceLinkForProfile(
     description?: string;
   },
 ) {
+  return createEvidenceRecordForProfile(profile, input);
+}
+
+export async function assertCanCreateEvidenceForProfile(
+  profile: ActiveProfile,
+  input: {
+    schoolId: string;
+    sessionId?: string;
+    projectId?: string;
+  },
+) {
   assertWritableDataMode();
   await assertCanAccessSchool(profile, input.schoolId);
 
@@ -633,6 +644,21 @@ export async function createEvidenceLinkForProfile(
       throw new Error("Selected project does not belong to the selected school.");
     }
   }
+}
+
+export async function createEvidenceRecordForProfile(
+  profile: ActiveProfile,
+  input: {
+    schoolId: string;
+    sessionId?: string;
+    projectId?: string;
+    fileName: string;
+    fileUrl: string;
+    fileType: string;
+    description?: string;
+  },
+) {
+  await assertCanCreateEvidenceForProfile(profile, input);
 
   return prisma.mediaUpload.create({
     data: {

@@ -1,5 +1,6 @@
 import type { ActiveProfile } from "@/features/facilitator/services/adms-workflow.service";
 import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { resolveStorageUrl } from "@/features/media/services/private-storage.service";
 import { withMockRelations } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
 import { isMockDataMode } from "@/lib/runtime-mode";
@@ -337,10 +338,10 @@ export async function getFacilitatorWorkspace(profile: ActiveProfile) {
     sourceSheet: item.sourceSheet,
   }));
   const workspaceReports: WorkspaceReport[] = reports.map((report) => ({ status: report.status }));
-  const workspaceEvidence: WorkspaceEvidence[] = evidence.map((upload) => ({
+  const workspaceEvidence: WorkspaceEvidence[] = await Promise.all(evidence.map(async (upload) => ({
     id: upload.id,
     fileName: upload.fileName,
-    fileUrl: upload.fileUrl,
+    fileUrl: await resolveStorageUrl(upload.fileUrl),
     fileType: upload.fileType,
     description: upload.description,
     school: { name: upload.school.name },
@@ -348,7 +349,7 @@ export async function getFacilitatorWorkspace(profile: ActiveProfile) {
     project: upload.project ? { title: upload.project.title } : null,
     uploadedBy: { fullName: upload.uploadedBy.fullName },
     createdAt: upload.createdAt,
-  }));
+  })));
 
   return {
     schools: workspaceSchools,

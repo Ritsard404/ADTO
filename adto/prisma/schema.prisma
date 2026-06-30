@@ -372,6 +372,9 @@ model ACESession {
   @@index([schoolId])
   @@index([facilitatorId])
   @@index([scheduledDate])
+  @@index([schoolId, scheduledDate])
+  @@index([facilitatorId, scheduledDate])
+  @@index([schoolId, status])
 }
 
 model ACEProject {
@@ -406,6 +409,7 @@ model ACEProject {
   @@unique([schoolId, title, gradeLevel, section])
   @@index([schoolId])
   @@index([sessionId])
+  @@index([schoolId, updatedAt])
 }
 
 model SessionProgress {
@@ -456,6 +460,7 @@ model InventoryItem {
   maintenanceLogs InventoryMaintenanceLog[]
 
   @@index([schoolId])
+  @@index([schoolId, condition])
 }
 
 model InventoryMaintenanceLog {
@@ -533,6 +538,7 @@ model ReportHistory {
 
   @@index([schoolId])
   @@index([generatedBy])
+  @@index([schoolId, generatedAt])
 }
 
 model ReportNarrative {
@@ -603,4 +609,30 @@ model MediaUpload {
   @@index([sessionId])
   @@index([projectId])
   @@index([uploadedById])
+  @@index([schoolId, createdAt])
+}
+
+model WorkbookImportBatch {
+  id               String    @id @default(uuid())
+  fileName         String
+  checksum         String
+  importedById     String
+  facilitatorEmail String
+  selectedSheets   String?
+  status           String    @default("PENDING")
+  rowsRead         Int       @default(0)
+  rowsImported     Int       @default(0)
+  rowsSkipped      Int       @default(0)
+  validationErrors String?
+  schoolId         String?
+  schoolName       String?
+  errorMessage     String?
+  createdAt        DateTime  @default(now())
+  completedAt      DateTime?
+  failedAt         DateTime?
+
+  @@index([checksum])
+  @@index([importedById])
+  @@index([schoolId])
+  @@index([createdAt])
 }

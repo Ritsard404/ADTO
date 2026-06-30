@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { bulkCreateEvidenceLinksAction } from "@/features/facilitator/actions/adms-workflow";
 import { EvidenceLinkImporter } from "@/features/facilitator/components/evidence-link-importer";
 import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
+import { resolveStorageUrl } from "@/features/media/services/private-storage.service";
 import { requireActiveProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -28,6 +29,12 @@ export default async function MediaPage() {
       take: 100,
     }),
   ]);
+  const uploadsWithUrls = await Promise.all(
+    uploads.map(async (upload) => ({
+      ...upload,
+      downloadUrl: await resolveStorageUrl(upload.fileUrl),
+    })),
+  );
   const missingProjectLinks = projects.filter((project) => !project.projectUrl);
   const missingProjectMedia = projects.filter((project) => !project.media.length);
 
@@ -38,7 +45,7 @@ export default async function MediaPage() {
         <Card className="adto-card">
           <CardContent className="pt-6">
             <p className="text-sm text-muted-foreground">Evidence links</p>
-            <p className="text-3xl font-bold">{uploads.length}</p>
+            <p className="text-3xl font-bold">{uploadsWithUrls.length}</p>
           </CardContent>
         </Card>
         <Card className="adto-card">
@@ -105,15 +112,15 @@ export default async function MediaPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {uploads.map((upload) => (
+              {uploadsWithUrls.map((upload) => (
                 <TableRow key={upload.id}>
-                  <TableCell className="font-medium"><a href={upload.fileUrl} className="text-ace-blue underline">{upload.fileName}</a></TableCell>
+                  <TableCell className="font-medium"><a href={upload.downloadUrl} target="_blank" rel="noreferrer" className="text-ace-blue underline">{upload.fileName}</a></TableCell>
                   <TableCell>{upload.school.name}</TableCell>
                   <TableCell>{upload.project?.title ?? (upload.session ? `${upload.session.gradeLevel} ${upload.session.section}` : "School")}</TableCell>
                   <TableCell>{upload.uploadedBy.fullName}</TableCell>
                 </TableRow>
               ))}
-              {!uploads.length ? (
+              {!uploadsWithUrls.length ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">No media uploaded yet.</TableCell>
                 </TableRow>

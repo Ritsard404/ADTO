@@ -21,13 +21,27 @@ Scope checked:
 - [x] Added explicit missing-env errors for Supabase URL and publishable key configuration.
 - [x] Moved direct `prisma` and `shadcn` entries from `dependencies` to `devDependencies`.
 - [x] Refreshed `package-lock.json`.
+- [x] Phase 1 P0 repo hardening:
+  - Added `npm run env:check` for deployment env validation without printing secrets.
+  - Added best-effort `AuditLog` writes for login attempts, password changes, admin password resets, user creation, workbook preview/import, report generation/download, report assistant requests, daily-log bulk saves, and evidence link saves.
+  - Added in-process rate limiting for login, password changes/resets, workbook preview/import, report assistant requests, report generation/download, daily-log bulk saves, and evidence link saves.
+  - Removed the hard-coded OpenAI model fallback; OpenAI is only used when both `OPENAI_API_KEY` and `OPENAI_MODEL` are configured.
+  - Switched `npm run build` to `next build --webpack` after the local Turbopack build repeatedly hit a Windows Prisma junction conflict.
+- [x] Phase 0-1 storage/import/performance pass:
+  - Added private Supabase Storage helper with private bucket creation, uploads, and signed URL resolution.
+  - Stored generated official report PPT/PDF artifacts as immutable private storage objects.
+  - Added private evidence file uploads with validation and signed URL rendering.
+  - Added workbook import batch/checksum tracking and duplicate completed-import blocking.
+  - Added default bounded calendar date windows.
+  - Added composite indexes for common session/project/inventory/media/report filters.
 
 ## P0 Security
 
 - [ ] Rotate Supabase database password and service-role key if `.env` has ever been shared, pasted, committed, screen-shared, or exposed in logs.
   - Evidence: local `.env` contains real database and Supabase service-role secrets.
   - Current guard: `.env` and `.env.local` are git-ignored.
-- [ ] Add deployment secret checklist before production use.
+- [x] Add deployment secret checklist before production use.
+  - Implemented as `npm run env:check`.
   - `ADTO_AUTH_BYPASS=false`
   - `ADTO_DATA_MODE=production`
   - `NEXT_PUBLIC_APP_URL` set to the deployed URL
@@ -38,19 +52,20 @@ Scope checked:
   - Evidence: `npm audit` reports high severity advisories for `xlsx@0.18.5`: prototype pollution and ReDoS.
   - Affected code: `src/features/import-export/services/adms-excel-import.ts`, `src/features/admin/services/workbook-governance.service.ts`.
   - Preferred action: migrate workbook parsing to a maintained package or a hardened server-only import worker.
-- [ ] Add abuse/rate limiting around high-risk actions.
+- [x] Add abuse/rate limiting around high-risk actions.
   - Login/password actions.
   - Workbook preview/import actions.
   - AI report assistant.
   - Report download/generation routes.
-- [ ] Add an app-level security event log.
+- [x] Add an app-level security event log.
   - Failed login attempts if available from Supabase.
   - Admin user creation and password reset.
   - Workbook import preview/import.
   - Report generation/download.
   - Evidence link creation and bulk upload.
-- [ ] Wire existing `AuditLog` and `ApprovalRequest` models into real writes.
-  - Evidence: code reads these models in workbook governance, but scan found no app writes.
+- [x] Wire existing `AuditLog` model into real writes.
+  - Implemented for first-pass high-risk actions.
+- [ ] Wire existing `ApprovalRequest` model into real approval workflows.
 - [ ] Verify RLS state against the live Supabase database after deploy.
   - Existing migration enables RLS on public tables.
   - Because the app intentionally uses server-side Prisma, do not add broad anon/authenticated policies unless direct browser table access becomes a requirement.
@@ -59,15 +74,16 @@ Scope checked:
 
 ## P0 Data Protection And Reliability
 
-- [ ] Store generated report artifacts in Supabase Storage or another private object store.
-  - Current behavior: `ReportHistory` stores route URLs that regenerate files instead of immutable generated files.
-  - Affected file: `src/app/(protected)/reports/official/route.ts`.
-- [ ] Add real evidence file uploads with signed/private URLs.
-  - Current behavior: evidence records are URL-only and depend on external Drive links.
+- [x] Store generated report artifacts in Supabase Storage or another private object store.
+  - Implemented: `ReportHistory` now stores private storage references for generated PPT/PDF artifacts and report history resolves signed URLs.
+  - Affected files: `src/app/(protected)/reports/official/route.ts`, `src/app/(protected)/reports/page.tsx`.
+- [x] Add real evidence file uploads with signed/private URLs.
+  - Implemented: evidence can be uploaded to private storage or saved as an external link.
   - Affected areas: `MediaUpload`, `/media`, `/facilitator/evidence`.
 - [ ] Add workbook import checksums and import batches.
-  - Prevent accidental re-imports.
-  - Show imported/updated/skipped row counts by sheet.
+  - [x] Prevent accidental re-imports when a workbook checksum already has a completed batch.
+  - [x] Store import batch status, workbook checksum, facilitator email, school, and global row counters.
+  - [ ] Show imported/updated/skipped row counts by sheet.
   - Allow rollback of one import batch.
 - [ ] Add backup/export/restore process for production.
   - Include database backup, object storage backup, and export verification.
@@ -77,8 +93,8 @@ Scope checked:
 
 ## P1 Performance
 
-- [ ] Add query limits and default date windows to the shared calendar.
-  - Current risk: calendar can fetch every scoped session when no date range is supplied.
+- [x] Add query limits and default date windows to the shared calendar.
+  - Implemented: missing/invalid date ranges default to a bounded two-school-year window and oversized ranges are capped.
   - Affected file: `src/features/calendar/services/calendar-read.service.ts`.
 - [ ] Paginate or window the facilitator workspace.
   - Current risk: it loads schools, sessions, projects, inventory, reports, and evidence for all accessible schools.
@@ -89,7 +105,7 @@ Scope checked:
 - [ ] Add full-text or trigram search indexes for global search.
   - Current risk: global search uses many case-insensitive `contains` filters.
   - Affected file: `src/features/search/services/global-search.service.ts`.
-- [ ] Add composite indexes for common filters.
+- [x] Add composite indexes for common filters.
   - Candidates:
     - `ACESession(schoolId, scheduledDate)`
     - `ACESession(facilitatorId, scheduledDate)`
@@ -116,11 +132,11 @@ Scope checked:
 - [ ] Review external URLs before rendering.
   - Project links and evidence links open in a new tab.
   - Keep `rel="noreferrer"` and add URL allowlist/warnings for unknown hosts.
-- [ ] Add file validation for future uploads.
+- [x] Add file validation for future uploads.
   - MIME sniffing, extension allowlist, file size limits, storage path isolation, and optional malware scanning.
-- [ ] Replace default AI model fallback with required config.
-  - Current code uses a hard-coded fallback model.
-  - Require `OPENAI_MODEL` in production or disable the assistant with a clear admin message.
+- [x] Replace default AI model fallback with required config.
+  - OpenAI is used only when both `OPENAI_API_KEY` and `OPENAI_MODEL` are configured.
+  - Otherwise the assistant stays on local fallback guidance.
 
 ## P1 System Gaps And Useful Features
 
@@ -149,7 +165,9 @@ Scope checked:
   - Download history.
   - Generated-by and generated-at metadata.
 - [ ] Add Evidence Library.
-  - Private upload, signed URL, tags, linked sessions/projects/reports, school-scoped browsing.
+  - [x] Private upload and signed URL rendering.
+  - [x] Linked school/session/project evidence records.
+  - [ ] Tags, linked reports, and richer school-scoped browsing.
 
 ## P2 Performance And Maintainability
 
@@ -179,6 +197,16 @@ Scope checked:
   - `next@16.2.9` includes nested `postcss@8.4.31`: moderate advisory.
   - `@prisma/client@7.8.0` install tree includes `prisma@7.8.0 -> @prisma/dev@0.24.3 -> @hono/node-server@1.19.11`: moderate advisory.
 - `npm outdated`: patch/minor updates exist for React, React DOM, Tailwind, lucide-react, react-hook-form, recharts, shadcn, and tooling; update in a separate tested dependency pass.
+- Latest phase 0-1 checks:
+  - `npx prisma validate`: passed.
+  - `npx prisma generate`: passed.
+  - `npx tsc --noEmit`: passed.
+  - `npm run lint`: passed.
+  - `npm run build`: passed.
+  - `git diff --check`: passed.
+  - `npm run prisma:deploy`: applied `20260630120000_storage_import_batches_and_indexes`.
+  - `npx prisma migrate status`: database schema is up to date.
+  - `npm run env:check`: fails until `SUPABASE_STORAGE_BUCKET` is set explicitly and `NEXT_PUBLIC_APP_URL` is changed from localhost to the deployed URL.
 
 ## Suggested Implementation Order
 

@@ -1,4 +1,4 @@
-import { Images } from "lucide-react";
+import { Images, Upload } from "lucide-react";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { createEvidenceLinkAction } from "@/features/facilitator/actions/adms-workflow";
+import { createEvidenceLinkAction, uploadEvidenceFileAction } from "@/features/facilitator/actions/adms-workflow";
 import { getFacilitatorWorkspace } from "@/features/facilitator/services/facilitator-workspace.service";
 import { requireActiveProfile } from "@/lib/auth";
 
@@ -23,47 +23,93 @@ export default async function FacilitatorEvidencePage() {
           <CardTitle>Add Evidence Link</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={createEvidenceLinkAction} className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Label>
-              School
-              <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
-              </select>
-            </Label>
-            <Label>
-              Session
-              <select name="sessionId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">School-level evidence</option>
-                {sessions.map((session) => <option key={session.id} value={session.id}>{session.school.name} - {session.gradeLevel} {session.section}</option>)}
-              </select>
-            </Label>
-            <Label>
-              Project
-              <select name="projectId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                <option value="">No project link</option>
-                {projects.map((project) => <option key={project.id} value={project.id}>{project.school.name} - {project.title}</option>)}
-              </select>
-            </Label>
-            <Label>
-              Evidence type
-              <select name="fileType" defaultValue="Drive link" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {["Drive link", "Session evidence", "Project file", "Attendance image", "Consultation notes", "School activity"].map((type) => <option key={type} value={type}>{type}</option>)}
-              </select>
-            </Label>
-            <Label className="xl:col-span-2">
-              Name
-              <Input name="fileName" className="mt-1" placeholder="Grade 7 robotics activity photos" />
-            </Label>
-            <Label className="xl:col-span-2">
-              Link
-              <Input name="fileUrl" type="url" className="mt-1" placeholder="https://drive.google.com/..." />
-            </Label>
-            <Label className="md:col-span-2 xl:col-span-4">
-              Description
-              <Textarea name="description" className="mt-1 min-h-20" placeholder="What this evidence supports" />
-            </Label>
-            <Button type="submit" className="w-fit">Add evidence</Button>
-          </form>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <form action={uploadEvidenceFileAction} className="grid gap-3 md:grid-cols-2">
+              <Label>
+                School
+                <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Evidence type
+                <select name="fileType" defaultValue="Session evidence" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {["Session evidence", "Project file", "Attendance image", "Consultation notes", "School activity"].map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Session
+                <select name="sessionId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">School-level evidence</option>
+                  {sessions.map((session) => <option key={session.id} value={session.id}>{session.school.name} - {session.gradeLevel} {session.section}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Project
+                <select name="projectId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">No project link</option>
+                  {projects.map((project) => <option key={project.id} value={project.id}>{project.school.name} - {project.title}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Name
+                <Input name="fileName" className="mt-1" placeholder="Grade 7 robotics activity photos" />
+              </Label>
+              <Label>
+                File
+                <Input name="file" type="file" className="mt-1" accept=".jpg,.jpeg,.png,.webp,.pdf,.docx,.pptx,.xlsx,.txt" />
+              </Label>
+              <Label className="md:col-span-2">
+                Description
+                <Textarea name="description" className="mt-1 min-h-20" placeholder="What this evidence supports" />
+              </Label>
+              <Button type="submit" className="w-fit">
+                <Upload className="size-4" />
+                Upload file
+              </Button>
+            </form>
+            <form action={createEvidenceLinkAction} className="grid gap-3 md:grid-cols-2">
+              <Label>
+                School
+                <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {schools.map((school) => <option key={school.id} value={school.id}>{school.name}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Evidence type
+                <select name="fileType" defaultValue="Drive link" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {["Drive link", "Session evidence", "Project file", "Attendance image", "Consultation notes", "School activity"].map((type) => <option key={type} value={type}>{type}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Session
+                <select name="sessionId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">School-level evidence</option>
+                  {sessions.map((session) => <option key={session.id} value={session.id}>{session.school.name} - {session.gradeLevel} {session.section}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Project
+                <select name="projectId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  <option value="">No project link</option>
+                  {projects.map((project) => <option key={project.id} value={project.id}>{project.school.name} - {project.title}</option>)}
+                </select>
+              </Label>
+              <Label>
+                Name
+                <Input name="fileName" className="mt-1" placeholder="Grade 7 robotics activity photos" />
+              </Label>
+              <Label>
+                Link
+                <Input name="fileUrl" type="url" className="mt-1" placeholder="https://drive.google.com/..." />
+              </Label>
+              <Label className="md:col-span-2">
+                Description
+                <Textarea name="description" className="mt-1 min-h-20" placeholder="What this evidence supports" />
+              </Label>
+              <Button type="submit" variant="outline" className="w-fit">Add link</Button>
+            </form>
+          </div>
         </CardContent>
       </Card>
       <Card className="adto-card">

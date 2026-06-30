@@ -24,11 +24,12 @@ function ImportMetric({ title, value, icon: Icon }: { title: string; value: numb
 export default async function ImportsPage() {
   await requireRole(["ADMIN"]);
 
-  const [facilitators, importedSessions, importedProjects, importedInventory, recentSessions] = await Promise.all([
+  const [facilitators, importedSessions, importedProjects, importedInventory, importBatchCount, recentSessions, recentBatches] = await Promise.all([
     prisma.profile.findMany({ where: { role: "FACILITATOR", status: "ACTIVE" }, select: { email: true, fullName: true }, orderBy: { fullName: "asc" } }),
     prisma.aCESession.count({ where: { sourceWorkbookFile: { not: null } } }),
     prisma.aCEProject.count({ where: { sourceWorkbookFile: { not: null } } }),
     prisma.inventoryItem.count({ where: { sourceWorkbookFile: { not: null } } }),
+    prisma.workbookImportBatch.count(),
     prisma.aCESession.findMany({
       where: { importedAt: { not: null } },
       orderBy: { importedAt: "desc" },
@@ -44,6 +45,10 @@ export default async function ImportsPage() {
         school: { select: { name: true } },
       },
     }),
+    prisma.workbookImportBatch.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
   ]);
 
   return (
@@ -56,11 +61,49 @@ export default async function ImportsPage() {
         importAction={runWorkbookImportAction}
       />
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-4">
         <ImportMetric title="Imported Sessions" value={importedSessions} icon={CalendarDays} />
         <ImportMetric title="Imported Projects" value={importedProjects} icon={FolderKanban} />
         <ImportMetric title="Imported Inventory" value={importedInventory} icon={Boxes} />
+        <ImportMetric title="Import Batches" value={importBatchCount} icon={FileSpreadsheet} />
       </section>
+
+      <Card className="adto-card">
+        <CardHeader>
+          <CardTitle>Recent Import Batches</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Workbook</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>School</TableHead>
+                <TableHead>Rows</TableHead>
+                <TableHead>Checksum</TableHead>
+                <TableHead>Created</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {recentBatches.map((batch) => (
+                <TableRow key={batch.id}>
+                  <TableCell className="font-medium">{batch.fileName}</TableCell>
+                  <TableCell>{batch.status}</TableCell>
+                  <TableCell>{batch.schoolName ?? "Pending"}</TableCell>
+                  <TableCell>{batch.rowsImported} imported / {batch.rowsSkipped} skipped / {batch.rowsRead} read</TableCell>
+                  <TableCell>{batch.checksum.slice(0, 16)}</TableCell>
+                  <TableCell>{batch.createdAt.toLocaleString("en-US")}</TableCell>
+                </TableRow>
+              ))}
+              {!recentBatches.length ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-muted-foreground">No workbook import batches have been recorded yet.</TableCell>
+                </TableRow>
+              ) : null}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <Card className="adto-card">
         <CardHeader>
