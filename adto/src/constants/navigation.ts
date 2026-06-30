@@ -5,6 +5,7 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
+  FileSpreadsheet,
   GraduationCap,
   HelpCircle,
   Home,
@@ -41,7 +42,7 @@ export const navigationGroups: NavGroup[] = [
     items: [
       { title: "Schools", href: "/schools", icon: School, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Facilitators", href: "/facilitators", icon: Users, roles: ["ADMIN"] },
-      { title: "Assignments", href: "/facilitators", icon: ClipboardList, roles: ["ADMIN"] },
+      { title: "Assignments", href: "/facilitators?view=assignments", icon: ClipboardList, roles: ["ADMIN"] },
     ],
   },
   {
@@ -50,6 +51,7 @@ export const navigationGroups: NavGroup[] = [
       { title: "ACE Sessions", href: "/sessions", icon: GraduationCap, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Calendar", href: "/calendar", icon: CalendarDays, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
       { title: "Reports", href: "/reports", icon: FileText, roles: ["ADMIN", "FACILITATOR", "SCHOOL_ADMIN"] },
+      { title: "ADMS Import", href: "/imports", icon: FileSpreadsheet, roles: ["ADMIN"] },
     ],
   },
   {
@@ -62,7 +64,7 @@ export const navigationGroups: NavGroup[] = [
   {
     title: "Insights",
     items: [
-      { title: "Analytics", href: "/dashboard", icon: BarChart3, roles: ["ADMIN"] },
+      { title: "Analytics", href: "/dashboard?view=analytics", icon: BarChart3, roles: ["ADMIN"] },
       { title: "Facilitator Analytics", href: "/facilitator/analytics", icon: BarChart3, roles: ["FACILITATOR"] },
     ],
   },

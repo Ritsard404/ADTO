@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Menu } from "lucide-react";
 import type { UserRole } from "@/generated/prisma/enums";
 import { navigationGroups } from "@/constants/navigation";
 import { ADTOBrandLockup } from "@/components/brand/ace-brand-mark";
+import { isNavigationItemActive } from "@/components/layout/navigation-active";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 
 export function MobileNav({ role }: { role: UserRole }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
 
   return (
     <Sheet>
@@ -38,7 +41,7 @@ export function MobileNav({ role }: { role: UserRole }) {
                 <p className="px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">{group.title}</p>
                 {items.map((item) => {
                   const Icon = item.icon;
-                  const active = pathname === item.href;
+                  const active = isNavigationItemActive(item, items, pathname, search);
 
                   return (
                     <Link

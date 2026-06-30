@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { Profile } from "@/generated/prisma/client";
 import { navigationGroups } from "@/constants/navigation";
 import { ADTOBrandLockup } from "@/components/brand/ace-brand-mark";
+import { isNavigationItemActive } from "@/components/layout/navigation-active";
 import { cn } from "@/lib/utils";
 
 export function AppSidebar({ profile, collapsed, onToggle }: { profile: Profile; collapsed: boolean; onToggle: () => void }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
 
   return (
     <aside className={cn("fixed inset-y-0 left-0 hidden shrink-0 border-r bg-sidebar px-2 py-2 lg:block", collapsed ? "w-18" : "w-60")}>
@@ -40,7 +43,7 @@ export function AppSidebar({ profile, collapsed, onToggle }: { profile: Profile;
                 <div className="space-y-1">
                   {items.map((item) => {
                     const Icon = item.icon;
-                    const active = pathname === item.href;
+                    const active = isNavigationItemActive(item, items, pathname, search);
 
                     return (
                       <Link

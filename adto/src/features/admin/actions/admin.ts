@@ -32,6 +32,9 @@ async function workbookFileFromFormData(formData: FormData) {
   if (!(file instanceof File) || !file.name) {
     throw new Error("Upload an ADMS workbook file.");
   }
+  if (!/\.(xlsx|xlsm|xls)$/i.test(file.name)) {
+    throw new Error("Upload an Excel workbook with .xlsx, .xlsm, or .xls.");
+  }
   if (file.size > 20 * 1024 * 1024) {
     throw new Error("Workbook is too large. Keep imports under 20 MB per batch.");
   }
@@ -454,7 +457,7 @@ export async function previewWorkbookImportAction(formData: FormData) {
     return { success: true, fileName: file.name, sheets } as const;
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Workbook preview failed. Confirm the file is a valid ADMS Excel workbook." } as const;
+    return { success: false, error: error instanceof Error ? error.message : "Workbook preview failed. Confirm the file is a valid ADMS Excel workbook." } as const;
   }
 }
 
@@ -470,12 +473,14 @@ export async function runWorkbookImportAction(formData: FormData) {
     const summary = await importAdmsWorkbookBuffer(await file.arrayBuffer(), facilitatorEmail, {
       sourceWorkbookFile: file.name,
       sheets: {
+        schoolInfo: formData.get("schoolInfo") === "on",
         sessions: formData.get("sessions") === "on",
         projects: formData.get("projects") === "on",
         inventory: formData.get("inventory") === "on",
       },
     });
     revalidatePath("/dashboard");
+    revalidatePath("/imports");
     revalidatePath("/sessions");
     revalidatePath("/reports");
     revalidatePath("/inventory");
@@ -483,6 +488,6 @@ export async function runWorkbookImportAction(formData: FormData) {
     return { success: true, ...summary } as const;
   } catch (error) {
     console.error(error);
-    return { success: false, error: "Workbook import failed. Check facilitator email, selected sheets, and workbook structure." } as const;
+    return { success: false, error: error instanceof Error ? error.message : "Workbook import failed. Check facilitator email, selected sheets, and workbook structure." } as const;
   }
 }

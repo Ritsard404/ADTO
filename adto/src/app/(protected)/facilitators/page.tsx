@@ -15,8 +15,14 @@ function dateInputValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
 }
 
-export default async function FacilitatorsPage() {
+export default async function FacilitatorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
   await requireRole(["ADMIN"]);
+  const params = await searchParams;
+  const showAssignmentsFirst = params.view === "assignments";
   const mock = isMockDataMode() ? withMockRelations() : null;
   const [facilitators, schools, assignments] = mock
     ? [mock.facilitators, mock.schools, mock.assignments]
@@ -33,138 +39,161 @@ export default async function FacilitatorsPage() {
         }),
       ]);
 
+  const assignmentEditor = (
+    <Card id="assignments" className="adto-card">
+      <CardHeader>
+        <CardTitle>Assign AF to School</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form action={upsertAssignmentAction} className="grid gap-3 md:grid-cols-[1fr_1fr_180px_160px_auto]">
+          <Label>
+            School
+            <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              {schools.map((school) => (
+                <option key={school.id} value={school.id}>
+                  {school.name}
+                </option>
+              ))}
+            </select>
+          </Label>
+          <Label>
+            Facilitator / AF
+            <select name="facilitatorId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              {facilitators.map((facilitator) => (
+                <option key={facilitator.id} value={facilitator.id}>
+                  {facilitator.fullName}
+                </option>
+              ))}
+            </select>
+          </Label>
+          <Label>
+            Start date
+            <Input name="startDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1" />
+          </Label>
+          <Label>
+            Status
+            <select name="status" defaultValue="ACTIVE" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              {["ACTIVE", "COMPLETED", "TRANSFERRED"].map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </Label>
+          <div className="flex items-end">
+            <Button type="submit">Assign AF</Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+
+  const assignmentHistory = (
+    <Card className="adto-card">
+      <CardHeader>
+        <CardTitle>Current and Historical Assignments</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>School</TableHead>
+              <TableHead>Facilitator</TableHead>
+              <TableHead>Dates</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assignments.map((assignment) => (
+              <TableRow key={assignment.id}>
+                <TableCell className="font-medium">{assignment.school.name}</TableCell>
+                <TableCell>{assignment.facilitator.fullName}</TableCell>
+                <TableCell>
+                  {assignment.startDate.toLocaleDateString("en-US")} -{" "}
+                  {assignment.endDate ? assignment.endDate.toLocaleDateString("en-US") : "Current"}
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={assignment.status} />
+                </TableCell>
+                <TableCell>
+                  {assignment.status === "ACTIVE" ? (
+                    <form action={endAssignmentAction}>
+                      <input type="hidden" name="assignmentId" value={assignment.id} />
+                      <Button type="submit" variant="outline" size="sm">
+                        Complete
+                      </Button>
+                    </form>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Closed</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  const facilitatorCoverage = (
+    <Card className="adto-card">
+      <CardHeader>
+        <CardTitle>Facilitator Coverage</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Active Schools</TableHead>
+              <TableHead>Assignment History</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {facilitators.map((facilitator) => (
+              <TableRow key={facilitator.id}>
+                <TableCell className="font-medium">{facilitator.fullName}</TableCell>
+                <TableCell>{facilitator.email}</TableCell>
+                <TableCell>
+                  {facilitator.facilitatorAssignments.find((assignment) => assignment.status === "ACTIVE")?.school.name ?? "None"}
+                </TableCell>
+                <TableCell>
+                  {facilitator.facilitatorAssignments.map((assignment) => (
+                    <div key={assignment.id} className="text-xs text-muted-foreground">
+                      {assignment.school.name}: {dateInputValue(assignment.startDate)} - {assignment.endDate ? dateInputValue(assignment.endDate) : "Current"} ({assignment.status})
+                    </div>
+                  ))}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="space-y-6">
-      <PageHeader title="Facilitators" description="Assign, reassign, remove, and review ACE facilitator school coverage." />
+      <PageHeader
+        title={showAssignmentsFirst ? "Assignments" : "Facilitators"}
+        description={showAssignmentsFirst ? "Assign, reassign, remove, and review ACE facilitator school coverage." : "Review ACE facilitator coverage and assignment history."}
+      />
 
-      <Card className="adto-card">
-        <CardHeader>
-          <CardTitle>Assign AF to School</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={upsertAssignmentAction} className="grid gap-3 md:grid-cols-[1fr_1fr_180px_160px_auto]">
-            <Label>
-              School
-              <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {schools.map((school) => (
-                  <option key={school.id} value={school.id}>
-                    {school.name}
-                  </option>
-                ))}
-              </select>
-            </Label>
-            <Label>
-              Facilitator / AF
-              <select name="facilitatorId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {facilitators.map((facilitator) => (
-                  <option key={facilitator.id} value={facilitator.id}>
-                    {facilitator.fullName}
-                  </option>
-                ))}
-              </select>
-            </Label>
-            <Label>
-              Start date
-              <Input name="startDate" type="date" defaultValue={new Date().toISOString().slice(0, 10)} className="mt-1" />
-            </Label>
-            <Label>
-              Status
-              <select name="status" defaultValue="ACTIVE" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-                {["ACTIVE", "COMPLETED", "TRANSFERRED"].map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-            </Label>
-            <div className="flex items-end">
-              <Button type="submit">Assign AF</Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card className="adto-card">
-        <CardHeader>
-          <CardTitle>Current and Historical Assignments</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>School</TableHead>
-                <TableHead>Facilitator</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {assignments.map((assignment) => (
-                <TableRow key={assignment.id}>
-                  <TableCell className="font-medium">{assignment.school.name}</TableCell>
-                  <TableCell>{assignment.facilitator.fullName}</TableCell>
-                  <TableCell>
-                    {assignment.startDate.toLocaleDateString("en-US")} -{" "}
-                    {assignment.endDate ? assignment.endDate.toLocaleDateString("en-US") : "Current"}
-                  </TableCell>
-                  <TableCell>
-                    <StatusBadge status={assignment.status} />
-                  </TableCell>
-                  <TableCell>
-                    {assignment.status === "ACTIVE" ? (
-                      <form action={endAssignmentAction}>
-                        <input type="hidden" name="assignmentId" value={assignment.id} />
-                        <Button type="submit" variant="outline" size="sm">
-                          Complete
-                        </Button>
-                      </form>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Closed</span>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card className="adto-card">
-        <CardHeader>
-          <CardTitle>Facilitator Coverage</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Active Schools</TableHead>
-                <TableHead>Assignment History</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {facilitators.map((facilitator) => (
-                <TableRow key={facilitator.id}>
-                  <TableCell className="font-medium">{facilitator.fullName}</TableCell>
-                  <TableCell>{facilitator.email}</TableCell>
-                  <TableCell>
-                    {facilitator.facilitatorAssignments.find((assignment) => assignment.status === "ACTIVE")?.school.name ?? "None"}
-                  </TableCell>
-                  <TableCell>
-                    {facilitator.facilitatorAssignments.map((assignment) => (
-                      <div key={assignment.id} className="text-xs text-muted-foreground">
-                        {assignment.school.name}: {dateInputValue(assignment.startDate)} - {assignment.endDate ? dateInputValue(assignment.endDate) : "Current"} ({assignment.status})
-                      </div>
-                    ))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {showAssignmentsFirst ? (
+        <>
+          {assignmentEditor}
+          {assignmentHistory}
+          {facilitatorCoverage}
+        </>
+      ) : (
+        <>
+          {facilitatorCoverage}
+          {assignmentEditor}
+          {assignmentHistory}
+        </>
+      )}
     </div>
   );
 }

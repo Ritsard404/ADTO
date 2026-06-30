@@ -19,7 +19,16 @@ type PreviewResult =
   | { success: false; error: string };
 
 type ImportResult =
-  | { success: true; rowsRead: number; rowsImported: number; rowsSkipped: number; validationErrors: string[] }
+  | {
+      success: true;
+      rowsRead: number;
+      rowsImported: number;
+      rowsSkipped: number;
+      validationErrors: string[];
+      schoolId?: string;
+      schoolName?: string;
+      sourceWorkbookFile?: string;
+    }
   | { success: false; error: string };
 
 export function WorkbookImportWizard({
@@ -67,6 +76,7 @@ export function WorkbookImportWizard({
           ))}
         </select>
         <div className="flex flex-wrap gap-4 text-sm lg:col-span-2">
+          <label className="flex items-center gap-2"><input name="schoolInfo" type="checkbox" defaultChecked /> School setup</label>
           <label className="flex items-center gap-2"><input name="sessions" type="checkbox" defaultChecked /> Sessions</label>
           <label className="flex items-center gap-2"><input name="projects" type="checkbox" defaultChecked /> Projects</label>
           <label className="flex items-center gap-2"><input name="inventory" type="checkbox" defaultChecked /> Inventory</label>
@@ -107,7 +117,17 @@ export function WorkbookImportWizard({
       {result ? (
         <div className="rounded-md bg-muted/40 p-3 text-sm">
           {result.success ? (
-            <p>{result.rowsImported} imported, {result.rowsSkipped} skipped, {result.rowsRead} rows read.</p>
+            <div className="space-y-2">
+              <p className="font-medium">{result.schoolName ?? "ADMS workbook"} imported.</p>
+              <p>{result.rowsImported} imported, {result.rowsSkipped} skipped, {result.rowsRead} rows read.</p>
+              {result.validationErrors.length ? (
+                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                  {result.validationErrors.map((error) => (
+                    <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           ) : (
             <p className="text-destructive">{result.error}</p>
           )}
