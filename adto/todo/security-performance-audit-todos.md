@@ -168,7 +168,8 @@ Scope checked:
 - [ ] Add Evidence Library.
   - [x] Private upload and signed URL rendering.
   - [x] Linked school/session/project evidence records.
-  - [ ] Tags, linked reports, and richer school-scoped browsing.
+  - [x] Tags and richer school-scoped browsing.
+  - [ ] Linked reports.
 
 ## P2 Performance And Maintainability
 

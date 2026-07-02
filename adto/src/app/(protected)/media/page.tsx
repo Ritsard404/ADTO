@@ -1,13 +1,24 @@
 import { PageHeader } from "@/components/common/page-header";
 import { StatusBadge } from "@/components/common/status-badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { bulkCreateEvidenceLinksAction } from "@/features/facilitator/actions/adms-workflow";
+import { bulkCreateEvidenceLinksAction, updateEvidenceReviewStatusAction } from "@/features/facilitator/actions/adms-workflow";
 import { EvidenceLinkImporter } from "@/features/facilitator/components/evidence-link-importer";
 import { getAccessibleSchoolIds } from "@/features/facilitator/services/adms-workflow.service";
 import { resolveStorageUrl } from "@/features/media/services/private-storage.service";
 import { requireActiveProfile } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+function formatBytes(value: number | null) {
+  if (!value) return "External";
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatStatus(value: string) {
+  return value.replaceAll("_", " ");
+}
 
 export default async function MediaPage() {
   const profile = await requireActiveProfile();
@@ -108,6 +119,9 @@ export default async function MediaPage() {
                 <TableHead>File</TableHead>
                 <TableHead>School</TableHead>
                 <TableHead>Linked To</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Uploaded By</TableHead>
               </TableRow>
             </TableHeader>
@@ -117,12 +131,34 @@ export default async function MediaPage() {
                   <TableCell className="font-medium"><a href={upload.downloadUrl} target="_blank" rel="noreferrer" className="text-ace-blue underline">{upload.fileName}</a></TableCell>
                   <TableCell>{upload.school.name}</TableCell>
                   <TableCell>{upload.project?.title ?? (upload.session ? `${upload.session.gradeLevel} ${upload.session.section}` : "School")}</TableCell>
+                  <TableCell>
+                    {profile.role === "ADMIN" ? (
+                      <form action={updateEvidenceReviewStatusAction} className="flex flex-wrap items-center gap-2">
+                        <input type="hidden" name="mediaUploadId" value={upload.id} />
+                        <select
+                          name="reviewStatus"
+                          defaultValue={upload.reviewStatus}
+                          className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="ACCEPTED">Accepted</option>
+                          <option value="NEEDS_REPLACEMENT">Needs replacement</option>
+                          <option value="REJECTED">Rejected</option>
+                        </select>
+                        <Button type="submit" variant="outline" size="sm">Save</Button>
+                      </form>
+                    ) : (
+                      `${formatStatus(upload.reviewStatus)} / ${formatStatus(upload.uploadStatus)}`
+                    )}
+                  </TableCell>
+                  <TableCell>{[upload.gradeLevelTag, upload.sectionTag, upload.teacherTag, upload.reportPeriod].filter(Boolean).join(" | ") || "School level"}</TableCell>
+                  <TableCell>{formatStatus(upload.originalSource)} - {formatBytes(upload.fileSizeBytes)}</TableCell>
                   <TableCell>{upload.uploadedBy.fullName}</TableCell>
                 </TableRow>
               ))}
               {!uploadsWithUrls.length ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-muted-foreground">No media uploaded yet.</TableCell>
+                  <TableCell colSpan={7} className="text-muted-foreground">No media uploaded yet.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>

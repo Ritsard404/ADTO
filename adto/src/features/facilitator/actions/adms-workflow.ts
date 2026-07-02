@@ -6,6 +6,8 @@ import { z } from "zod";
 import { requireActiveProfile } from "@/lib/auth";
 import { sanitizeStorageSegment, uploadPrivateObject } from "@/features/media/services/private-storage.service";
 import { recordAuditLog } from "@/features/security/services/audit-log.service";
+import { prisma } from "@/lib/prisma";
+import { assertWritableDataMode } from "@/lib/runtime-mode";
 import { enforceRateLimit, isRateLimitError } from "@/lib/security/rate-limit";
 import {
   assertCanCreateEvidenceForProfile,
@@ -33,6 +35,7 @@ import {
   facilitatorSectionUpsertSchema,
   facilitatorSessionCreateSchema,
   facilitatorTeacherCreateSchema,
+  evidenceReviewSchema,
   inventoryVerificationSchema,
   projectUpsertSchema,
   sessionUpdateSchema,
@@ -267,6 +270,13 @@ export async function uploadEvidenceFileAction(formData: FormData) {
       fileUrl: object.ref,
       fileType: input.fileType,
       description: input.description || undefined,
+      storageBucket: object.bucket,
+      storagePath: object.path,
+      fileSizeBytes: file.size,
+      mimeType: file.type || "application/octet-stream",
+      originalSource: "SUPABASE_STORAGE",
+      uploadStatus: "UPLOADED",
+      reviewStatus: "PENDING",
     });
     await recordAuditLog({
       actorId: profile.id,
@@ -298,6 +308,44 @@ export async function uploadEvidenceFileAction(formData: FormData) {
     }
     return;
   }
+}
+
+export async function updateEvidenceReviewStatusAction(formData: FormData) {
+  assertWritableDataMode();
+  const profile = await requireActiveProfile();
+  if (profile.role !== "ADMIN") {
+    throw new Error("Only admins can update evidence review status.");
+  }
+
+  const input = evidenceReviewSchema.parse(formDataToObject(formData));
+  const evidence = await prisma.mediaUpload.update({
+    where: { id: input.mediaUploadId },
+    data: {
+      reviewStatus: input.reviewStatus,
+      verifiedAt: input.reviewStatus === "ACCEPTED" ? new Date() : null,
+      verifiedBy: input.reviewStatus === "ACCEPTED" ? profile.id : null,
+    },
+    select: {
+      id: true,
+      schoolId: true,
+      reviewStatus: true,
+    },
+  });
+
+  await recordAuditLog({
+    actorId: profile.id,
+    entityType: "MediaUpload",
+    entityId: evidence.id,
+    action: "EVIDENCE_REVIEW_STATUS_UPDATED",
+    newValue: {
+      schoolId: evidence.schoolId,
+      reviewStatus: evidence.reviewStatus,
+    },
+  });
+
+  revalidatePath("/media");
+  revalidatePath("/facilitator/evidence");
+  revalidatePath("/dashboard");
 }
 
 export async function bulkCreateEvidenceLinksAction(formData: FormData) {

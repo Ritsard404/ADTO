@@ -94,6 +94,15 @@ type WorkspaceEvidence = {
   fileUrl: string;
   fileType: string;
   description: string | null;
+  fileSizeBytes: number | null;
+  mimeType: string | null;
+  originalSource: string;
+  uploadStatus: string;
+  reviewStatus: string;
+  teacherTag: string | null;
+  gradeLevelTag: string | null;
+  sectionTag: string | null;
+  reportPeriod: string | null;
   school: { name: string };
   session: { gradeLevel: string; section: string } | null;
   project: { title: string } | null;
@@ -344,6 +353,15 @@ export async function getFacilitatorWorkspace(profile: ActiveProfile) {
     fileUrl: await resolveStorageUrl(upload.fileUrl),
     fileType: upload.fileType,
     description: upload.description,
+    fileSizeBytes: upload.fileSizeBytes,
+    mimeType: upload.mimeType,
+    originalSource: upload.originalSource,
+    uploadStatus: upload.uploadStatus,
+    reviewStatus: upload.reviewStatus,
+    teacherTag: upload.teacherTag,
+    gradeLevelTag: upload.gradeLevelTag,
+    sectionTag: upload.sectionTag,
+    reportPeriod: upload.reportPeriod,
     school: { name: upload.school.name },
     session: upload.session ? { gradeLevel: upload.session.gradeLevel, section: upload.session.section } : null,
     project: upload.project ? { title: upload.project.title } : null,

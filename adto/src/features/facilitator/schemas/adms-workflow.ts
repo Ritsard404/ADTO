@@ -144,3 +144,8 @@ export const facilitatorEvidenceLinkSchema = z.object({
   fileType: z.string().trim().min(1).max(80),
   description: optionalText(1000),
 });
+
+export const evidenceReviewSchema = z.object({
+  mediaUploadId: z.string().uuid(),
+  reviewStatus: z.enum(["PENDING", "ACCEPTED", "NEEDS_REPLACEMENT", "REJECTED"]),
+});

@@ -95,26 +95,26 @@ Generated from a scan of:
 
 ## P0: Evidence And File Storage Gaps
 
-- [ ] Add real file upload to Supabase Storage for evidence files.
-- [ ] Keep link-based evidence import as a fast path for Google Drive URLs.
-- [ ] Add file metadata:
-  - [ ] storage bucket/path
-  - [ ] file size
-  - [ ] MIME type
-  - [ ] original source
-  - [ ] uploaded/verified status
-- [ ] Add evidence tagging by school, session, project, teacher, grade, section, and report period.
-- [ ] Add evidence review status:
-  - [ ] pending
-  - [ ] accepted
-  - [ ] needs replacement
-  - [ ] rejected
-- [ ] Add permission checks so school admins can view evidence but cannot modify facilitator uploads unless explicitly allowed.
+- [x] Add real file upload to Supabase Storage for evidence files.
+- [x] Keep link-based evidence import as a fast path for Google Drive URLs.
+- [x] Add file metadata:
+  - [x] storage bucket/path
+  - [x] file size
+  - [x] MIME type
+  - [x] original source
+  - [x] uploaded/verified status
+- [x] Add evidence tagging by school, session, project, teacher, grade, section, and report period.
+- [x] Add evidence review status:
+  - [x] pending
+  - [x] accepted
+  - [x] needs replacement
+  - [x] rejected
+- [x] Add permission checks so school admins can view evidence but cannot modify facilitator uploads unless explicitly allowed.
 
 ## P0: Report Output Gaps
 
-- [ ] Store generated PPTX/PDF files in Supabase Storage instead of only streaming downloads.
-- [ ] Update `ReportHistory` to point to stored file URLs.
+- [x] Store generated PPTX/PDF files in Supabase Storage instead of only streaming downloads.
+- [x] Update `ReportHistory` to point to stored file URLs.
 - [ ] Add report versioning:
   - [ ] draft
   - [ ] submitted
@@ -232,7 +232,7 @@ Generated from a scan of:
 
 - [x] 1. Finish import batch logging and dry-run preview.
 - [x] 2. Import teacher masterlist and teacher assignments from `School_Info`.
-- [ ] 3. Add Supabase Storage for evidence and generated report files.
+- [x] 3. Add Supabase Storage for evidence and generated report files.
 - [ ] 4. Wire audit logs into every mutation.
 - [ ] 5. Build approval/review workflows for reports and evidence.
 - [ ] 6. Add production monitoring, backup, and import health dashboards.

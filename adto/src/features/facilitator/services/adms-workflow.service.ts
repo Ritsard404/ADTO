@@ -1,4 +1,5 @@
 import type { InventoryCondition, ProjectStatus, SessionStatus, UserRole } from "@/generated/prisma/enums";
+import { parseStorageRef } from "@/features/media/services/private-storage.service";
 import { mockAssignments } from "@/lib/mock-adms-data";
 import { prisma } from "@/lib/prisma";
 import { assertWritableDataMode, isMockDataMode } from "@/lib/runtime-mode";
@@ -34,6 +35,16 @@ type EvidenceLinkRowInput = {
   description?: string;
 };
 
+type EvidenceStorageMetadataInput = {
+  storageBucket?: string;
+  storagePath?: string;
+  fileSizeBytes?: number;
+  mimeType?: string;
+  originalSource?: string;
+  uploadStatus?: string;
+  reviewStatus?: string;
+};
+
 function parseOptionalDate(value?: string) {
   return value ? new Date(value) : null;
 }
@@ -44,6 +55,10 @@ function chunk<T>(items: T[], size: number) {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+function reportPeriodFromDate(value: Date | null | undefined) {
+  return value ? value.toISOString().slice(0, 7) : null;
 }
 
 export async function getAccessibleSchoolIds(profile: ActiveProfile) {
@@ -407,6 +422,13 @@ export async function bulkUpdateSessionDailyLogsForProfile(profile: ActiveProfil
                 fileUrl: row.evidenceUrl,
                 fileType: "Drive link",
                 description: row.remarks || null,
+                originalSource: "EXTERNAL_LINK",
+                uploadStatus: "LINKED",
+                reviewStatus: "PENDING",
+                teacherTag: session.teacher,
+                gradeLevelTag: session.gradeLevel,
+                sectionTag: session.section,
+                reportPeriod: reportPeriodFromDate(session.scheduledDate),
               },
             });
             evidenceCreated += 1;
@@ -656,9 +678,24 @@ export async function createEvidenceRecordForProfile(
     fileUrl: string;
     fileType: string;
     description?: string;
-  },
+  } & EvidenceStorageMetadataInput,
 ) {
   await assertCanCreateEvidenceForProfile(profile, input);
+  const [session, project] = await Promise.all([
+    input.sessionId
+      ? prisma.aCESession.findUnique({
+          where: { id: input.sessionId },
+          select: { scheduledDate: true, gradeLevel: true, section: true, teacher: true },
+        })
+      : Promise.resolve(null),
+    input.projectId
+      ? prisma.aCEProject.findUnique({
+          where: { id: input.projectId },
+          select: { term: true, gradeLevel: true, section: true, teacher: true },
+        })
+      : Promise.resolve(null),
+  ]);
+  const storageRef = parseStorageRef(input.fileUrl);
 
   return prisma.mediaUpload.create({
     data: {
@@ -670,6 +707,17 @@ export async function createEvidenceRecordForProfile(
       fileUrl: input.fileUrl,
       fileType: input.fileType,
       description: input.description || null,
+      storageBucket: input.storageBucket ?? storageRef?.bucket ?? null,
+      storagePath: input.storagePath ?? storageRef?.path ?? null,
+      fileSizeBytes: input.fileSizeBytes ?? null,
+      mimeType: input.mimeType || null,
+      originalSource: input.originalSource ?? (storageRef ? "SUPABASE_STORAGE" : "EXTERNAL_LINK"),
+      uploadStatus: input.uploadStatus ?? (storageRef ? "UPLOADED" : "LINKED"),
+      reviewStatus: input.reviewStatus ?? "PENDING",
+      teacherTag: session?.teacher ?? project?.teacher ?? null,
+      gradeLevelTag: session?.gradeLevel ?? project?.gradeLevel ?? null,
+      sectionTag: session?.section ?? project?.section ?? null,
+      reportPeriod: reportPeriodFromDate(session?.scheduledDate) ?? project?.term ?? null,
     },
   });
 }
@@ -694,25 +742,34 @@ export async function bulkCreateEvidenceLinksForProfile(profile: ActiveProfile, 
   const projectIds = rows.map((row) => row.projectId).filter(Boolean) as string[];
   const [sessions, projects] = await Promise.all([
     sessionIds.length
-      ? prisma.aCESession.findMany({ where: { id: { in: sessionIds } }, select: { id: true, schoolId: true } })
+      ? prisma.aCESession.findMany({
+          where: { id: { in: sessionIds } },
+          select: { id: true, schoolId: true, scheduledDate: true, gradeLevel: true, section: true, teacher: true },
+        })
       : Promise.resolve([]),
     projectIds.length
-      ? prisma.aCEProject.findMany({ where: { id: { in: projectIds } }, select: { id: true, schoolId: true } })
+      ? prisma.aCEProject.findMany({
+          where: { id: { in: projectIds } },
+          select: { id: true, schoolId: true, term: true, gradeLevel: true, section: true, teacher: true },
+        })
       : Promise.resolve([]),
   ]);
-  const sessionSchool = new Map(sessions.map((session) => [session.id, session.schoolId]));
-  const projectSchool = new Map(projects.map((project) => [project.id, project.schoolId]));
+  const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+  const projectsById = new Map(projects.map((project) => [project.id, project]));
 
   let created = 0;
   let skipped = 0;
   for (const batch of chunk(rows, 25)) {
     await prisma.$transaction(async (tx) => {
       for (const row of batch) {
-        if (row.sessionId && sessionSchool.get(row.sessionId) !== row.schoolId) {
+        const session = row.sessionId ? sessionsById.get(row.sessionId) : null;
+        const project = row.projectId ? projectsById.get(row.projectId) : null;
+
+        if (row.sessionId && session?.schoolId !== row.schoolId) {
           skipped += 1;
           continue;
         }
-        if (row.projectId && projectSchool.get(row.projectId) !== row.schoolId) {
+        if (row.projectId && project?.schoolId !== row.schoolId) {
           skipped += 1;
           continue;
         }
@@ -741,6 +798,13 @@ export async function bulkCreateEvidenceLinksForProfile(profile: ActiveProfile, 
             fileUrl: row.fileUrl,
             fileType: row.fileType,
             description: row.description || null,
+            originalSource: "EXTERNAL_LINK",
+            uploadStatus: "LINKED",
+            reviewStatus: "PENDING",
+            teacherTag: session?.teacher ?? project?.teacher ?? null,
+            gradeLevelTag: session?.gradeLevel ?? project?.gradeLevel ?? null,
+            sectionTag: session?.section ?? project?.section ?? null,
+            reportPeriod: reportPeriodFromDate(session?.scheduledDate) ?? project?.term ?? null,
           },
         });
         created += 1;

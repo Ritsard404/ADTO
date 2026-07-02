@@ -603,16 +603,29 @@ model ApprovalRequest {
 }
 
 model MediaUpload {
-  id           String   @id @default(uuid())
-  schoolId     String
-  sessionId    String?
-  projectId    String?
-  uploadedById String
-  fileName     String
-  fileUrl      String
-  fileType     String
-  description  String?
-  createdAt    DateTime @default(now())
+  id             String    @id @default(uuid())
+  schoolId       String
+  sessionId      String?
+  projectId      String?
+  uploadedById   String
+  fileName       String
+  fileUrl        String
+  fileType       String
+  description    String?
+  storageBucket  String?
+  storagePath    String?
+  fileSizeBytes  Int?
+  mimeType       String?
+  originalSource String    @default("EXTERNAL_LINK")
+  uploadStatus   String    @default("LINKED")
+  reviewStatus   String    @default("PENDING")
+  teacherTag     String?
+  gradeLevelTag  String?
+  sectionTag     String?
+  reportPeriod   String?
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  createdAt      DateTime  @default(now())
 
   school     School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   session    ACESession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
@@ -624,6 +637,8 @@ model MediaUpload {
   @@index([projectId])
   @@index([uploadedById])
   @@index([schoolId, createdAt])
+  @@index([schoolId, reviewStatus])
+  @@index([schoolId, reportPeriod])
 }
 
 model WorkbookImportBatch {

@@ -10,6 +10,16 @@ import { createEvidenceLinkAction, uploadEvidenceFileAction } from "@/features/f
 import { getFacilitatorWorkspace } from "@/features/facilitator/services/facilitator-workspace.service";
 import { requireActiveProfile } from "@/lib/auth";
 
+function formatBytes(value: number | null) {
+  if (!value) return "External";
+  if (value < 1024 * 1024) return `${Math.round(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatStatus(value: string) {
+  return value.replaceAll("_", " ");
+}
+
 export default async function FacilitatorEvidencePage() {
   const profile = await requireActiveProfile();
   const { schools, sessions, projects, evidence } = await getFacilitatorWorkspace(profile);
@@ -17,14 +27,15 @@ export default async function FacilitatorEvidencePage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Evidence Repository" description="Review session documentation, project files, attendance, teacher consultation evidence, and school activity uploads." />
-      <Card className="adto-card">
-        <CardHeader className="flex flex-row items-center gap-3">
-          <Images className="size-5 text-ace-blue" />
-          <CardTitle>Add Evidence Link</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 xl:grid-cols-2">
-            <form action={uploadEvidenceFileAction} className="grid gap-3 md:grid-cols-2">
+      {profile.role !== "SCHOOL_ADMIN" ? (
+        <Card className="adto-card">
+          <CardHeader className="flex flex-row items-center gap-3">
+            <Images className="size-5 text-ace-blue" />
+            <CardTitle>Add Evidence Link</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 xl:grid-cols-2">
+              <form action={uploadEvidenceFileAction} className="grid gap-3 md:grid-cols-2">
               <Label>
                 School
                 <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
@@ -67,8 +78,8 @@ export default async function FacilitatorEvidencePage() {
                 <Upload className="size-4" />
                 Upload file
               </Button>
-            </form>
-            <form action={createEvidenceLinkAction} className="grid gap-3 md:grid-cols-2">
+              </form>
+              <form action={createEvidenceLinkAction} className="grid gap-3 md:grid-cols-2">
               <Label>
                 School
                 <select name="schoolId" className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
@@ -108,10 +119,11 @@ export default async function FacilitatorEvidencePage() {
                 <Textarea name="description" className="mt-1 min-h-20" placeholder="What this evidence supports" />
               </Label>
               <Button type="submit" variant="outline" className="w-fit">Add link</Button>
-            </form>
-          </div>
-        </CardContent>
-      </Card>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
       <Card className="adto-card">
         <CardHeader className="flex flex-row items-center gap-3">
           <Images className="size-5 text-ace-orange" />
@@ -126,6 +138,9 @@ export default async function FacilitatorEvidencePage() {
                 <TableHead>Session</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Uploaded By</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
@@ -138,13 +153,16 @@ export default async function FacilitatorEvidencePage() {
                   <TableCell>{upload.session ? `${upload.session.gradeLevel} ${upload.session.section}` : "School level"}</TableCell>
                   <TableCell>{upload.project?.title ?? "No project"}</TableCell>
                   <TableCell>{upload.fileType}</TableCell>
+                  <TableCell>{formatStatus(upload.reviewStatus)} / {formatStatus(upload.uploadStatus)}</TableCell>
+                  <TableCell>{[upload.gradeLevelTag, upload.sectionTag, upload.teacherTag, upload.reportPeriod].filter(Boolean).join(" | ") || "School level"}</TableCell>
+                  <TableCell>{formatStatus(upload.originalSource)} - {formatBytes(upload.fileSizeBytes)}</TableCell>
                   <TableCell>{upload.uploadedBy.fullName}</TableCell>
                   <TableCell>{upload.createdAt.toLocaleDateString("en-US")}</TableCell>
                 </TableRow>
               ))}
               {!evidence.length ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-muted-foreground">No evidence uploaded yet.</TableCell>
+                  <TableCell colSpan={10} className="text-muted-foreground">No evidence uploaded yet.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>
