@@ -256,34 +256,47 @@ model SchoolSection {
 }
 
 model Teacher {
-  id               String   @id @default(uuid())
-  fullName         String
-  department       String?
-  email            String?
-  contactNumber    String?
-  position         String?
-  employmentStatus String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  fullName           String
+  department         String?
+  email              String?
+  contactNumber      String?
+  position           String?
+  employmentStatus   String?
+  sourceKey          String?   @unique
+  sourceSheet        String?
+  sourceWorkbookFile String?
+  sourceRowRange     String?
+  importedAt         DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   assignments TeacherAssignment[]
+
+  @@index([sourceWorkbookFile])
 }
 
 model TeacherAssignment {
-  id                   String   @id @default(uuid())
+  id                   String    @id @default(uuid())
   teacherId            String
   schoolId             String
   sectionId            String?
   schoolYear           String
   gradeLevel           String
   subject              String
-  sessionsParticipated Int      @default(0)
-  hoursSupported       Decimal  @default(0)
-  projectsFacilitated  Int      @default(0)
-  attendanceRate       Int      @default(0)
-  participationScore   Int      @default(0)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  sessionsParticipated Int       @default(0)
+  hoursSupported       Decimal   @default(0)
+  projectsFacilitated  Int       @default(0)
+  attendanceRate       Int       @default(0)
+  participationScore   Int       @default(0)
+  sourceKey            String?   @unique
+  sourceSheet          String?
+  sourceWorkbookFile   String?
+  sourceRowRange       String?
+  sourceDeployedFormId String?
+  importedAt           DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   teacher Teacher        @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   school  School         @relation(fields: [schoolId], references: [id], onDelete: Cascade)
@@ -291,6 +304,7 @@ model TeacherAssignment {
 
   @@index([schoolId])
   @@index([teacherId])
+  @@index([schoolId, sourceWorkbookFile])
 }
 
 model ActivityCategory {
@@ -623,6 +637,7 @@ model WorkbookImportBatch {
   rowsRead         Int       @default(0)
   rowsImported     Int       @default(0)
   rowsSkipped      Int       @default(0)
+  sheetSummary     String?
   validationErrors String?
   schoolId         String?
   schoolName       String?

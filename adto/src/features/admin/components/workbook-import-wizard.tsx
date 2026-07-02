@@ -16,8 +16,24 @@ type PreviewResult =
       fileName: string;
       checksum: string;
       sheets: Array<{ name: string; hidden: number; range: string; sampleRows: number; formulas: number; firstRow: string[] }>;
+      dryRun: WorkbookDryRun;
     }
   | { success: false; error: string };
+
+type WorkbookDryRun = {
+  rowsRead: number;
+  rowsImported: number;
+  rowsSkipped: number;
+  rowsCreated: number;
+  rowsUpdated: number;
+  validationErrors: string[];
+  warnings: string[];
+  detailCounts: Record<string, number>;
+  sheetSummaries: Record<string, { rowsRead: number; rowsImported: number; rowsSkipped: number; rowsCreated: number; rowsUpdated: number }>;
+  schoolId?: string;
+  schoolName?: string;
+  sourceWorkbookFile?: string;
+};
 
 type ImportResult =
   | {
@@ -25,7 +41,21 @@ type ImportResult =
       rowsRead: number;
       rowsImported: number;
       rowsSkipped: number;
+      rowsCreated: number;
+      rowsUpdated: number;
       validationErrors: string[];
+      warnings: string[];
+      detailCounts: {
+        schools: number;
+        schoolYears: number;
+        sections: number;
+        teachers: number;
+        teacherAssignments: number;
+        sessions: number;
+        projects: number;
+        inventoryItems: number;
+      };
+      sheetSummaries: Record<string, { rowsRead: number; rowsImported: number; rowsSkipped: number; rowsCreated: number; rowsUpdated: number }>;
       schoolId?: string;
       schoolName?: string;
       sourceWorkbookFile?: string;
@@ -101,6 +131,29 @@ export function WorkbookImportWizard({
             <>
               <p className="font-medium">{preview.fileName}</p>
               <p className="text-muted-foreground">Checksum: {preview.checksum.slice(0, 16)}</p>
+              <div className="mt-2 rounded-md border bg-background p-3">
+                <p className="font-medium">{preview.dryRun.schoolName ?? "Workbook"} dry-run</p>
+                <p className="text-muted-foreground">
+                  {preview.dryRun.rowsCreated} to create / {preview.dryRun.rowsUpdated} to update / {preview.dryRun.rowsSkipped} to skip / {preview.dryRun.rowsRead} read
+                </p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  {Object.entries(preview.dryRun.sheetSummaries).map(([sheet, counts]) => (
+                    <div key={sheet} className="rounded-md border bg-muted/30 p-2 text-xs">
+                      <p className="font-medium text-sm">{sheet}</p>
+                      <p className="text-muted-foreground">
+                        {counts.rowsCreated} create / {counts.rowsUpdated} update / {counts.rowsSkipped} skip / {counts.rowsRead} read
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                {preview.dryRun.warnings.length || preview.dryRun.validationErrors.length ? (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                    {[...preview.dryRun.warnings, ...preview.dryRun.validationErrors].map((message) => (
+                      <li key={message}>{message}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 {preview.sheets
                   .filter((sheet) => ["CleanedData", "Projects", "GS-i", "HS-i", "AdoptionDetails", "School_Info"].includes(sheet.name))
@@ -123,7 +176,27 @@ export function WorkbookImportWizard({
           {result.success ? (
             <div className="space-y-2">
               <p className="font-medium">{result.schoolName ?? "ADMS workbook"} imported.</p>
-              <p>{result.rowsImported} imported, {result.rowsSkipped} skipped, {result.rowsRead} rows read.</p>
+              <p>{result.rowsCreated} created, {result.rowsUpdated} updated, {result.rowsSkipped} skipped, {result.rowsRead} rows read.</p>
+              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {Object.entries(result.detailCounts)
+                  .filter(([, value]) => value > 0)
+                  .map(([label, value]) => (
+                    <div key={label} className="rounded-md border bg-background p-2">
+                      <p className="text-xs uppercase text-muted-foreground">{label.replace(/([A-Z])/g, " $1")}</p>
+                      <p className="font-semibold">{value}</p>
+                    </div>
+                  ))}
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {Object.entries(result.sheetSummaries).map(([sheet, counts]) => (
+                  <div key={sheet} className="rounded-md border bg-background p-2 text-xs">
+                    <p className="font-medium text-sm">{sheet}</p>
+                    <p className="text-muted-foreground">
+                      {counts.rowsCreated} created / {counts.rowsUpdated} updated / {counts.rowsSkipped} skipped / {counts.rowsRead} read
+                    </p>
+                  </div>
+                ))}
+              </div>
               {result.importBatchId ? (
                 <p className="text-muted-foreground">Batch: {result.importBatchId.slice(0, 8)} / checksum {result.checksum?.slice(0, 16)}</p>
               ) : null}
@@ -131,6 +204,13 @@ export function WorkbookImportWizard({
                 <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
                   {result.validationErrors.map((error) => (
                     <li key={error}>{error}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {result.warnings.length ? (
+                <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                  {result.warnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
                   ))}
                 </ul>
               ) : null}

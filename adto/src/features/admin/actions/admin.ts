@@ -8,7 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { assertWritableDataMode } from "@/lib/runtime-mode";
 import { enforceRateLimit, isRateLimitError } from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { importAdmsWorkbookBuffer, inspectAdmsWorkbookBuffer } from "@/features/import-export/services/adms-excel-import";
+import { importAdmsWorkbookBuffer, inspectAdmsWorkbookBuffer, previewAdmsWorkbookImportBuffer } from "@/features/import-export/services/adms-excel-import";
 import {
   assignmentEndSchema,
   assignmentUpsertSchema,
@@ -505,6 +505,13 @@ export async function previewWorkbookImportAction(formData: FormData) {
     fileName = file.name;
     const workbookBuffer = await file.arrayBuffer();
     const checksum = checksumArrayBuffer(workbookBuffer);
+    const facilitatorEmail = String(formData.get("facilitatorEmail") ?? "").trim().toLowerCase();
+    const selectedSheets = {
+      schoolInfo: formData.get("schoolInfo") === "on",
+      sessions: formData.get("sessions") === "on",
+      projects: formData.get("projects") === "on",
+      inventory: formData.get("inventory") === "on",
+    };
     const sheets = inspectAdmsWorkbookBuffer(workbookBuffer).map((sheet) => ({
       name: sheet.name,
       hidden: sheet.hidden,
@@ -513,14 +520,19 @@ export async function previewWorkbookImportAction(formData: FormData) {
       formulas: sheet.formulas.length,
       firstRow: sheet.sampleRows[0]?.slice(0, 8).map((cell) => String(cell ?? "")) ?? [],
     }));
+    const dryRun = await previewAdmsWorkbookImportBuffer(workbookBuffer, facilitatorEmail, {
+      sourceWorkbookFile: file.name,
+      checksum,
+      sheets: selectedSheets,
+    });
     await recordAuditLog({
       actorId: profile.id,
       entityType: "WorkbookImport",
       entityId: file.name,
       action: "WORKBOOK_PREVIEWED",
-      newValue: { fileName: file.name, size: file.size, checksum, sheetCount: sheets.length },
+      newValue: { fileName: file.name, size: file.size, checksum, sheetCount: sheets.length, dryRun },
     });
-    return { success: true, fileName: file.name, checksum, sheets } as const;
+    return { success: true, fileName: file.name, checksum, sheets, dryRun } as const;
   } catch (error) {
     console.error(error);
     if (actorId) {
@@ -605,6 +617,7 @@ export async function runWorkbookImportAction(formData: FormData) {
         rowsRead: summary.rowsRead,
         rowsImported: summary.rowsImported,
         rowsSkipped: summary.rowsSkipped,
+        sheetSummary: JSON.stringify(summary.sheetSummaries),
         validationErrors: summary.validationErrors.length ? JSON.stringify(summary.validationErrors) : null,
         schoolId: summary.schoolId ?? null,
         schoolName: summary.schoolName ?? null,
@@ -630,7 +643,12 @@ export async function runWorkbookImportAction(formData: FormData) {
         rowsRead: summary.rowsRead,
         rowsImported: summary.rowsImported,
         rowsSkipped: summary.rowsSkipped,
+        rowsCreated: summary.rowsCreated,
+        rowsUpdated: summary.rowsUpdated,
         validationErrors: summary.validationErrors.length,
+        warnings: summary.warnings.length,
+        detailCounts: summary.detailCounts,
+        sheetSummaries: summary.sheetSummaries,
         schoolId: summary.schoolId,
       },
     });

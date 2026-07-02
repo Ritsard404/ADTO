@@ -83,7 +83,8 @@ Scope checked:
 - [ ] Add workbook import checksums and import batches.
   - [x] Prevent accidental re-imports when a workbook checksum already has a completed batch.
   - [x] Store import batch status, workbook checksum, facilitator email, school, and global row counters.
-  - [ ] Show imported/updated/skipped row counts by sheet.
+  - [x] Show imported/skipped/read row counts by sheet.
+  - [x] Distinguish created rows from updated rows in sheet-level import counts.
   - Allow rollback of one import batch.
 - [ ] Add backup/export/restore process for production.
   - Include database backup, object storage backup, and export verification.

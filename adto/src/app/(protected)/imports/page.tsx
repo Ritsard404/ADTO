@@ -21,6 +21,25 @@ function ImportMetric({ title, value, icon: Icon }: { title: string; value: numb
   );
 }
 
+function formatSheetSummary(value: string | null) {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Record<
+      string,
+      { rowsRead?: number; rowsImported?: number; rowsSkipped?: number; rowsCreated?: number; rowsUpdated?: number }
+    >;
+    return Object.entries(parsed)
+      .map(([sheet, counts]) =>
+        counts.rowsCreated != null || counts.rowsUpdated != null
+          ? `${sheet}: ${counts.rowsCreated ?? 0} created / ${counts.rowsUpdated ?? 0} updated / ${counts.rowsSkipped ?? 0} skipped`
+          : `${sheet}: ${counts.rowsImported ?? 0} imported / ${counts.rowsSkipped ?? 0} skipped / ${counts.rowsRead ?? 0} read`,
+      )
+      .join(" | ");
+  } catch {
+    return null;
+  }
+}
+
 export default async function ImportsPage() {
   await requireRole(["ADMIN"]);
 
@@ -90,7 +109,12 @@ export default async function ImportsPage() {
                   <TableCell className="font-medium">{batch.fileName}</TableCell>
                   <TableCell>{batch.status}</TableCell>
                   <TableCell>{batch.schoolName ?? "Pending"}</TableCell>
-                  <TableCell>{batch.rowsImported} imported / {batch.rowsSkipped} skipped / {batch.rowsRead} read</TableCell>
+                  <TableCell>
+                    <p>{batch.rowsImported} imported / {batch.rowsSkipped} skipped / {batch.rowsRead} read</p>
+                    {formatSheetSummary(batch.sheetSummary) ? (
+                      <p className="text-xs text-muted-foreground">{formatSheetSummary(batch.sheetSummary)}</p>
+                    ) : null}
+                  </TableCell>
                   <TableCell>{batch.checksum.slice(0, 16)}</TableCell>
                   <TableCell>{batch.createdAt.toLocaleString("en-US")}</TableCell>
                 </TableRow>

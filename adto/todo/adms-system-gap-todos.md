@@ -52,16 +52,16 @@ Generated from a scan of:
 
 ## P0: Import Reliability Gaps
 
-- [ ] Add an `ImportBatch` database model to record each uploaded workbook, uploader, file name, checksum, status, counts, started time, completed time, and failure reason.
+- [x] Add an `ImportBatch` database model to record each uploaded workbook, uploader, file name, checksum, status, counts, started time, completed time, and failure reason.
 - [ ] Add `ImportBatchRow` or similar row-level logging for skipped rows, validation errors, and source row ranges.
-- [ ] Add a true dry-run preview before import:
-  - [ ] rows to create
-  - [ ] rows to update
-  - [ ] rows to skip
-  - [ ] duplicate schools/deployed forms
-  - [ ] missing facilitator/profile mappings
+- [x] Add a true dry-run preview before import:
+  - [x] rows to create
+  - [x] rows to update
+  - [x] rows to skip
+  - [x] duplicate schools/deployed forms
+  - [x] missing facilitator/profile mappings
 - [ ] Add import rollback or undo by batch.
-- [ ] Add import idempotency by workbook checksum and source keys.
+- [x] Add import idempotency by workbook checksum and source keys.
 - [ ] Add conflict UI when the uploaded workbook school code or deployed form matches multiple existing records.
 - [ ] Move large imports to a background job or route-handler workflow if Vercel Server Action timeouts become a problem.
 - [ ] Add tests using the legacy workbook as a fixture:
@@ -73,11 +73,11 @@ Generated from a scan of:
 
 ## P0: Workbook Parity Gaps
 
-- [ ] Import teacher masterlist from `School_Info` into `Teacher`.
-- [ ] Import teacher-section-subject relationships from `School_Info` into `TeacherAssignment`.
+- [x] Import teacher masterlist from `School_Info` into `Teacher`.
+- [x] Import teacher-section-subject relationships from `School_Info` into `TeacherAssignment`.
 - [ ] Import teacher participation metrics:
-  - [ ] sessions participated
-  - [ ] hours supported
+  - [x] sessions participated
+  - [x] estimated hours supported
   - [ ] projects facilitated
   - [ ] attendance/participation score
 - [ ] Decide whether `BackendData` should become the canonical import source for any fields not present in `CleanedData`.
@@ -230,8 +230,8 @@ Generated from a scan of:
 
 ## Recommended Build Order
 
-- [ ] 1. Finish import batch logging and dry-run preview.
-- [ ] 2. Import teacher masterlist and teacher assignments from `School_Info`.
+- [x] 1. Finish import batch logging and dry-run preview.
+- [x] 2. Import teacher masterlist and teacher assignments from `School_Info`.
 - [ ] 3. Add Supabase Storage for evidence and generated report files.
 - [ ] 4. Wire audit logs into every mutation.
 - [ ] 5. Build approval/review workflows for reports and evidence.
